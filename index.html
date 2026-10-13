@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Thought Drawer</title>
 <style>
 /* ── 테마: 열대 바다 위에 뜬 Fluent 유리창 ── */
@@ -123,14 +123,40 @@ dialog h3{font-size:20px;margin-bottom:14px}
 .opt input:checked+span{border-color:var(--accent);background:var(--card-hi);box-shadow:0 0 0 1px var(--accent)}
 .opt input:focus-visible+span{outline:2px solid var(--focus);outline-offset:2px}
 @media (max-width:760px){
-  .window{height:auto;margin:0;border-radius:0;border-width:0;min-height:100dvh}
-  .app{grid-template-columns:1fr}
-  .cabinet{border-right:0;border-bottom:1px solid var(--line);padding:14px}
-  .drawers{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
-  .drawer{width:auto;flex:0 0 auto;margin:0;gap:12px}
-  .cab-foot{margin-top:10px}
-  main{overflow:visible}
-  .quick{border-radius:16px}
+  body{font-size:15px}
+  input,select,textarea{font-size:16px!important} /* iOS 자동 확대 방지 */
+  .window{height:auto;min-height:100vh;min-height:100dvh;margin:0;border-radius:0;border-width:0;overflow:visible;
+    padding-bottom:env(safe-area-inset-bottom)}
+  .titlebar{height:36px;padding-left:max(14px,env(safe-area-inset-left))}
+  .wc i{width:38px}
+  .app{display:block}
+  .cabinet{overflow:visible;border-right:0;border-bottom:1px solid var(--line);padding:12px 12px 10px}
+  .brand{padding:0 2px 8px}
+  .brand h1{font-size:20px}
+  .brand p{font-size:12px;margin-top:0}
+  .drawers{display:flex;flex-wrap:wrap;gap:6px}
+  .drawer{width:auto;margin:0;padding:7px 10px;gap:8px;border:1px solid var(--line);border-radius:999px;font-size:14px}
+  .drawer.add{margin-top:0;border-style:dashed}
+  .drawer .name{gap:6px}
+  .drawer .name span[aria-hidden]{width:auto}
+  .drawer[aria-current="true"]::before{left:14px;right:14px;top:auto;bottom:2px;width:auto;height:3px}
+  .cab-foot{margin-top:10px;padding:0}
+  main{overflow:visible;padding:16px 14px 10px}
+  .top{margin-bottom:14px;gap:10px}
+  .top>div{flex:1;min-width:0}
+  .top h2{font-size:24px}
+  .search{order:3;flex:1 1 100%;max-width:none;min-width:0}
+  .stats{gap:6px;margin-bottom:18px}
+  .stat{flex:1 1 calc(33.333% - 6px);min-width:0;padding:8px 10px}
+  .stat b{font-size:20px}
+  .grid{grid-template-columns:1fr}
+  .acts button{padding:8px 10px}
+  .quick{border-radius:20px;padding:8px;bottom:calc(8px + env(safe-area-inset-bottom));margin-bottom:8px}
+  .quick select{flex:0 0 auto;max-width:42%}
+  .quick input{flex:1 1 0;min-width:0}
+  .quick .btn{flex:1 1 100%;border-radius:12px}
+  dialog{max-height:90dvh;overflow:auto;padding:18px}
+  .toast{bottom:calc(110px + env(safe-area-inset-bottom));max-width:90vw;text-align:center}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
