@@ -217,6 +217,7 @@ dialog h3{font-size:20px;margin-bottom:14px}
         <button class="ghost" id="exportBtn">내보내기</button>
         <button class="ghost" id="importBtn">불러오기</button>
         <button class="ghost" id="themeBtn">테마</button>
+        <button class="ghost" id="restoreBtn" hidden>기본 서랍 복원</button>
         <input type="file" id="importFile" accept="application/json" hidden>
       </div>
     </aside>
@@ -228,6 +229,7 @@ dialog h3{font-size:20px;margin-bottom:14px}
           <div class="sub" id="sub"></div>
         </div>
         <input class="search" id="search" type="search" placeholder="제목, 내용, 태그 검색" aria-label="검색">
+        <button class="ghost" id="editDrawerBtn" hidden>서랍 수정</button>
         <button class="ghost" id="delDrawerBtn" hidden>서랍 삭제</button>
         <button class="btn" id="newBtn">새 메모</button>
       </div>
@@ -260,13 +262,14 @@ dialog h3{font-size:20px;margin-bottom:14px}
 </dialog>
 <dialog id="ddlg">
   <form method="dialog" id="dform">
-    <h3>새 서랍 만들기</h3>
+    <h3 id="dTitle">새 서랍 만들기</h3>
     <label class="f">이름<input id="dName" maxlength="12" required placeholder="예: 여행, 운동, 레시피"></label>
+    <label class="f">설명 (선택)<input id="dHint" maxlength="30" placeholder="서랍 이름 아래에 보여요"></label>
     <div class="f">아이콘<div class="pick" id="dIcons"></div></div>
     <div class="f">색<div class="pick" id="dColors"></div></div>
     <div class="row">
       <button type="button" class="ghost" id="dCancel">닫기</button>
-      <button type="submit" class="btn">만들기</button>
+      <button type="submit" class="btn" id="dSubmit">만들기</button>
     </div>
   </form>
 </dialog>
@@ -286,12 +289,26 @@ const $=s=>document.querySelector(s);
 const DKEY="thought-drawer-custom-v1";
 const ICONS=["★","♪","⌂","✈","☕","✿","☀","⚑","♟","✉","☘","⚙"];
 const COLORS=["--c-x1","--c-x2","--c-x3","--c-x4","--c-x5","--c-x6"];
+const BASE_COLORS=BASE_DRAWERS.map(d=>d.color), BASE_ICONS=BASE_DRAWERS.map(d=>d.icon);
+const ALLCOLORS=[...BASE_COLORS,...COLORS], ALLICONS=[...BASE_ICONS,...ICONS];
+const BASE_IDS=new Set(BASE_DRAWERS.map(d=>d.id));
+const MODKEY="thought-drawer-mods-v1";
 let custom=[];try{custom=JSON.parse(localStorage.getItem(DKEY))||[]}catch(e){}
+/* 기본 서랍(꿈·기록 등)의 수정/삭제 내용: {id:{name,icon,color,hint}} 또는 {id:{del:true}} */
+let mods={};try{mods=JSON.parse(localStorage.getItem(MODKEY))||{}}catch(e){}
 let DRAWERS=[],dmap={};
-function buildDrawers(){DRAWERS=[...BASE_DRAWERS,...custom];dmap=Object.fromEntries(DRAWERS.map(d=>[d.id,d]))}
+function buildDrawers(){
+  const base=BASE_DRAWERS.filter(d=>!(mods[d.id]&&mods[d.id].del)).map(d=>{
+    const m=mods[d.id];if(!m)return d;
+    return {...d,name:m.name||d.name,icon:m.icon||d.icon,color:ALLCOLORS.includes(m.color)?m.color:d.color,hint:m.hint||d.hint};
+  });
+  DRAWERS=[...base,...custom];dmap=Object.fromEntries(DRAWERS.map(d=>[d.id,d]));
+}
+const fbId=()=>dmap.log?"log":(DRAWERS[0]?DRAWERS[0].id:"log");   /* 서랍이 없어진 메모가 갈 곳 */
 function saveDrawers(){try{localStorage.setItem(DKEY,JSON.stringify(custom))}catch(e){toast("서랍을 저장하지 못했어요. 내보내기로 백업해 주세요.")}}
+function saveMods(){try{localStorage.setItem(MODKEY,JSON.stringify(mods))}catch(e){}}
 buildDrawers();
-let notes=[], view="all", query="", editId=null;
+let notes=[], view="all", query="", editId=null, dEditId=null;
 
 /* 저장: 이 기기 캐시 + 공유 저장소(Firebase Realtime Database) */
 const DB_URL="https://andong-trip-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -317,7 +334,7 @@ function sampleNotes(){
 }
 /* 첫 화면용 캐시(이 기기). 진짜 데이터는 공유 저장소에 있어요. */
 function load(){
-  try{const r=localStorage.getItem(KEY);if(r){notes=JSON.parse(r);notes.forEach(n=>{if(!dmap[n.d])n.d="log"});return}}catch(e){}
+  try{const r=localStorage.getItem(KEY);if(r){notes=JSON.parse(r);notes.forEach(n=>{if(!dmap[n.d])n.d=fbId()});return}}catch(e){}
   notes=[];
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(notes))}catch(e){}}
@@ -364,16 +381,21 @@ function migrateOnce(w){
 }
 function apply(w){
   synced=true;setSync("동기화됨 ✓");
-  const rn=w.notes||{}, rd=w.drawers||{};
-  const sig=JSON.stringify([rn,rd]);
+  const rn=w.notes||{}, rd=w.drawers||{}, rm=w.drawerMods||{};
+  const sig=JSON.stringify([rn,rd,rm]);
   if(sig===remoteSig)return;
   remoteSig=sig;
-  custom=Object.entries(rd).filter(([,d])=>d&&typeof d==="object").map(([id,d])=>({id,name:String(d.name||"서랍").slice(0,12),icon:String(d.icon||"★").slice(0,2),color:COLORS.includes(d.color)?d.color:COLORS[0],hint:"직접 만든 서랍",custom:true,t:+d.t||0})).sort((a,b)=>a.t-b.t);
+  custom=Object.entries(rd).filter(([,d])=>d&&typeof d==="object").map(([id,d])=>({id,name:String(d.name||"서랍").slice(0,12),icon:String(d.icon||"★").slice(0,2),color:ALLCOLORS.includes(d.color)?d.color:COLORS[0],hint:String(d.hint||"직접 만든 서랍").slice(0,30),custom:true,t:+d.t||0})).sort((a,b)=>a.t-b.t);
+  mods={};
+  Object.entries(rm).forEach(([id,m])=>{
+    if(!BASE_IDS.has(id)||!m||typeof m!=="object")return;
+    mods[id]=m.del?{del:true}:{name:String(m.name||"").slice(0,12),icon:String(m.icon||"").slice(0,2),color:m.color,hint:String(m.hint||"").slice(0,30)};
+  });
   buildDrawers();
   notes=Object.entries(rn).filter(([,n])=>n&&typeof n==="object").map(([id,n])=>normNote(n,id));
-  notes.forEach(n=>{if(!dmap[n.d])n.d="log"});
+  notes.forEach(n=>{if(!dmap[n.d])n.d=fbId()});
   if(view!=="all"&&!dmap[view])view="all";
-  save();saveDrawers();render();
+  save();saveDrawers();saveMods();render();
 }
 async function pull(){
   if(pulling)return;
@@ -409,10 +431,11 @@ function renderNav(){
   const fcur=$("#fDrawer").value;$("#fDrawer").innerHTML=opts;if(fcur&&dmap[fcur])$("#fDrawer").value=fcur;
   const cur=$("#qDrawer").value;
   $("#qDrawer").innerHTML=opts;
-  $("#qDrawer").value=view!=="all"?view:(cur||"idea");
+  const want=view!=="all"?view:(cur||"idea");
+  $("#qDrawer").value=dmap[want]?want:fbId();
 }
 function card(n){
-  const d=dmap[n.d];
+  const d=dmap[n.d]||dmap[fbId()]||{name:"",color:"--accent"};
   return `<article class="note" style="--c:var(${d.color})">
     <h3>${esc(n.title)}</h3>
     <p>${esc(n.body)}</p>
@@ -431,7 +454,9 @@ function render(){
   const d=dmap[view];
   $("#title").textContent=d?d.name:"전체";
   $("#sub").textContent=d?d.hint:"모든 서랍에 든 메모";
-  $("#delDrawerBtn").hidden=!(d&&d.custom);
+  $("#editDrawerBtn").hidden=!d;
+  $("#delDrawerBtn").hidden=!d;
+  $("#restoreBtn").hidden=!Object.keys(mods).length;
   $("#stats").innerHTML=view==="all"?DRAWERS.map(x=>`<div class="stat" style="--c:var(${x.color})"><b>${notes.filter(n=>n.d===x.id).length}</b><span>${esc(x.name)}</span></div>`).join(""):"";
   const q=query.trim().toLowerCase();
   let list=notes.filter(n=>(view==="all"||n.d===view)&&(!q||(n.title+n.body+n.tags.join(" ")).toLowerCase().includes(q)));
@@ -448,7 +473,8 @@ function openDlg(id){
   editId=id||null;
   const n=notes.find(x=>x.id===id);
   $("#dlgTitle").textContent=n?"메모 수정":"새 메모";
-  $("#fDrawer").value=n?n.d:(view!=="all"?view:"idea");
+  const wantD=n?n.d:(view!=="all"?view:"idea");
+  $("#fDrawer").value=dmap[wantD]?wantD:fbId();
   $("#fTitle").value=n?n.title:"";
   $("#fBody").value=n?n.body:"";
   $("#fTags").value=n?n.tags.join(", "):"";
@@ -475,27 +501,60 @@ $("#qAdd").onclick=quickAdd;
 $("#qText").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing)quickAdd()});
 
 /* 이벤트 */
-function openDDlg(){
-  $("#dName").value="";
-  $("#dIcons").innerHTML=ICONS.map((i,k)=>`<label class="opt"><input type="radio" name="dIcon" value="${i}" ${k===0?"checked":""} aria-label="아이콘 ${i}"><span>${i}</span></label>`).join("");
-  $("#dColors").innerHTML=COLORS.map((c,k)=>`<label class="opt"><input type="radio" name="dColor" value="${c}" ${k===0?"checked":""} aria-label="색 ${k+1}"><span style="background:var(${c})"></span></label>`).join("");
+function openDDlg(id){
+  dEditId=id||null;
+  const d=id?dmap[id]:null;
+  const icons=d&&!ALLICONS.includes(d.icon)?[d.icon,...ALLICONS]:ALLICONS;
+  const curIcon=d?d.icon:ICONS[0], curColor=d?d.color:COLORS[0];
+  $("#dTitle").textContent=d?"서랍 수정":"새 서랍 만들기";
+  $("#dSubmit").textContent=d?"저장":"만들기";
+  $("#dName").value=d?d.name:"";
+  $("#dHint").value=d&&d.hint!=="직접 만든 서랍"?d.hint:"";
+  $("#dIcons").innerHTML=icons.map(i=>`<label class="opt"><input type="radio" name="dIcon" value="${esc(i)}" ${i===curIcon?"checked":""} aria-label="아이콘 ${esc(i)}"><span>${esc(i)}</span></label>`).join("");
+  $("#dColors").innerHTML=ALLCOLORS.map((c,k)=>`<label class="opt"><input type="radio" name="dColor" value="${c}" ${c===curColor?"checked":""} aria-label="색 ${k+1}"><span style="background:var(${c})"></span></label>`).join("");
   $("#ddlg").showModal();$("#dName").focus();
 }
 $("#dform").addEventListener("submit",()=>{
   const name=$("#dName").value.trim();if(!name)return;
+  const icon=$("input[name=dIcon]:checked").value, color=$("input[name=dColor]:checked").value, hint=$("#dHint").value.trim();
+  if(dEditId){
+    const d=dmap[dEditId];if(!d)return;
+    if(d.custom){
+      const c=custom.find(x=>x.id===dEditId);if(!c)return;
+      Object.assign(c,{name,icon,color,hint:hint||"직접 만든 서랍"});
+      dbPatch("/drawers/"+c.id,{name:c.name,icon:c.icon,color:c.color,hint:c.hint});
+      saveDrawers();
+    }else{
+      mods[dEditId]={name,icon,color,hint};
+      dbPut("/drawerMods/"+dEditId,mods[dEditId]);
+      saveMods();
+    }
+    buildDrawers();render();toast("서랍을 수정했어요");
+    return;
+  }
   const id=newId("c");
-  const nd={id,name,icon:$("input[name=dIcon]:checked").value,color:$("input[name=dColor]:checked").value,hint:"직접 만든 서랍",custom:true,t:Date.now()};
-  custom.push(nd);dbPut("/drawers/"+id,{name:nd.name,icon:nd.icon,color:nd.color,t:nd.t});
+  const nd={id,name,icon,color,hint:hint||"직접 만든 서랍",custom:true,t:Date.now()};
+  custom.push(nd);dbPut("/drawers/"+id,{name:nd.name,icon:nd.icon,color:nd.color,hint:nd.hint,t:nd.t});
   saveDrawers();buildDrawers();view=id;render();toast("새 서랍을 만들었어요");
 });
 $("#dCancel").onclick=()=>$("#ddlg").close();
+$("#editDrawerBtn").onclick=()=>{if(dmap[view])openDDlg(view)};
 $("#delDrawerBtn").onclick=()=>{
-  const d=dmap[view];if(!d||!d.custom)return;
+  const d=dmap[view];if(!d)return;
+  if(DRAWERS.length<=1){toast("서랍은 최소 하나는 있어야 해요");return}
+  const rest=DRAWERS.filter(x=>x.id!==d.id);
+  const to=rest.find(x=>x.id==="log")||rest[0];
   const n=notes.filter(x=>x.d===d.id).length;
-  if(!confirm("'"+d.name+"' 서랍을 삭제할까요?"+(n?" 안의 메모 "+n+"개는 '기록' 서랍으로 옮겨져요.":"")))return;
-  const upd={["drawers/"+d.id]:null};
-  notes.forEach(x=>{if(x.d===d.id){x.d="log";upd["notes/"+x.id+"/d"]="log"}});
-  custom=custom.filter(c=>c.id!==d.id);dbPatch("",upd);saveDrawers();save();buildDrawers();view="all";render();toast("서랍을 삭제했어요");
+  if(!confirm("'"+d.name+"' 서랍을 삭제할까요?"+(n?" 안의 메모 "+n+"개는 '"+to.name+"' 서랍으로 옮겨져요.":"")))return;
+  const upd={};
+  notes.forEach(x=>{if(x.d===d.id){x.d=to.id;upd["notes/"+x.id+"/d"]=to.id}});
+  if(d.custom){upd["drawers/"+d.id]=null;custom=custom.filter(c=>c.id!==d.id)}
+  else{mods[d.id]={del:true};upd["drawerMods/"+d.id]={del:true};saveMods()}
+  dbPatch("",upd);saveDrawers();save();buildDrawers();view="all";render();toast("서랍을 삭제했어요");
+};
+$("#restoreBtn").onclick=()=>{
+  if(!confirm("꿈, 기록 등 기본 서랍을 처음 상태로 되돌릴까요?\n이름·아이콘 수정과 삭제가 취소돼요. (이미 옮겨진 메모는 그대로 있어요)"))return;
+  mods={};saveMods();dbDel("/drawerMods");buildDrawers();render();toast("기본 서랍을 복원했어요");
 };
 $("#drawers").addEventListener("click",e=>{if(e.target.closest("[data-add]")){openDDlg();return}const b=e.target.closest("[data-v]");if(b){view=b.dataset.v;render()}});
 document.addEventListener("click",e=>{
@@ -522,14 +581,15 @@ $("#importFile").addEventListener("change",e=>{
       if(!Array.isArray(data)&&Array.isArray(data.drawers)){
         data.drawers.filter(d=>d&&d.id&&d.name).forEach(d=>{const id=cleanId(d.id);
           if(id&&!dmap[id]){
-            const nd={id,name:String(d.name).slice(0,12),icon:String(d.icon||"★").slice(0,2),color:COLORS.includes(d.color)?d.color:COLORS[0],hint:"직접 만든 서랍",custom:true,t:Date.now()};
-            custom.push(nd);buildDrawers();upd["drawers/"+id]={name:nd.name,icon:nd.icon,color:nd.color,t:nd.t};
+            const nd={id,name:String(d.name).slice(0,12),icon:String(d.icon||"★").slice(0,2),color:ALLCOLORS.includes(d.color)?d.color:COLORS[0],hint:String(d.hint||"직접 만든 서랍").slice(0,30),custom:true,t:Date.now()};
+            custom.push(nd);buildDrawers();upd["drawers/"+id]={name:nd.name,icon:nd.icon,color:nd.color,hint:nd.hint,t:nd.t};
           }});
         saveDrawers();
       }
       const ids=new Set(notes.map(n=>n.id));
-      arr.filter(n=>n&&n.id&&dmap[n.d]&&!ids.has(cleanId(n.id))).forEach(n=>{
+      arr.filter(n=>n&&n.id&&!ids.has(cleanId(n.id))).forEach(n=>{
         const id=cleanId(n.id);const note=normNote({pin:false,...n},id);
+        if(!dmap[note.d])note.d=fbId();
         notes.push(note);ids.add(id);upd["notes/"+id]=noteBody(note);
       });
       if(Object.keys(upd).length)dbPatch("",upd);
