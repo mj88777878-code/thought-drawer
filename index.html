@@ -42,7 +42,9 @@ button{cursor:pointer}
   border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 60px var(--shadow),0 2px 8px var(--shadow);overflow:hidden}
 .titlebar{display:flex;align-items:center;gap:10px;height:40px;padding-left:14px;background:var(--bar);border-bottom:1px solid var(--line);font-size:12px;flex:none}
 .titlebar .ico{width:16px;height:16px;border-radius:4px;background:linear-gradient(135deg,#4cc9f0,#1a6fd0);display:inline-block}
-.wc{margin-left:auto;display:flex;height:100%;pointer-events:none;user-select:none}
+.sync{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.sync.err{color:var(--c-todo)}
+.wc{margin-left:8px;display:flex;height:100%;pointer-events:none;user-select:none}
 .wc i{width:46px;display:grid;place-items:center;font-style:normal;color:var(--muted);font-size:12px}
 
 .app{flex:1;min-height:0;display:grid;grid-template-columns:250px 1fr}
@@ -128,7 +130,8 @@ dialog h3{font-size:20px;margin-bottom:14px}
   .window{height:auto;min-height:100vh;min-height:100dvh;margin:0;border-radius:0;border-width:0;overflow:visible;
     padding-bottom:env(safe-area-inset-bottom)}
   .titlebar{height:36px;padding-left:max(14px,env(safe-area-inset-left))}
-  .wc i{width:38px}
+  .wc{display:none}
+  .sync{margin-right:14px}
   .app{display:block}
   .cabinet{overflow:visible;border-right:0;border-bottom:1px solid var(--line);padding:12px 12px 10px}
   .brand{padding:0 2px 8px}
@@ -200,6 +203,7 @@ dialog h3{font-size:20px;margin-bottom:14px}
 <div class="window">
   <div class="titlebar">
     <span class="ico" aria-hidden="true"></span><span>Thought Drawer</span>
+    <span id="sync" class="sync" role="status" aria-live="polite"></span>
     <span class="wc" aria-hidden="true"><i>&#x2500;</i><i>&#x25A1;</i><i>&#x2715;</i></span>
   </div>
   <div class="app">
@@ -289,11 +293,20 @@ function saveDrawers(){try{localStorage.setItem(DKEY,JSON.stringify(custom))}cat
 buildDrawers();
 let notes=[], view="all", query="", editId=null;
 
-/* 저장 */
-function load(){
-  try{const r=localStorage.getItem(KEY);if(r){notes=JSON.parse(r);notes.forEach(n=>{if(!dmap[n.d])n.d="log"});return}}catch(e){}
+/* 저장: 이 기기 캐시 + 공유 저장소(Firebase Realtime Database) */
+const DB_URL="https://andong-trip-default-rtdb.asia-southeast1.firebasedatabase.app";
+const DB_ROOT=DB_URL.replace(/\/+$/,"")+"/thought-drawer";   /* 여행 앱 데이터(/andong)와 분리된 별도 경로 */
+const POLL_MS=8000, MKEY="thought-drawer-migrated-v1";
+let loading=true, synced=false, remoteSig="", queue=[], flushing=false, pulling=false, seq=0, ruleWarned=false;
+
+const cleanId=s=>String(s==null?"":s).replace(/[.#$\[\]\/\s]/g,"_").slice(0,60);
+const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const toArr=v=>Array.isArray(v)?v:(v&&typeof v==="object"?Object.values(v):[]);
+const noteBody=n=>({d:n.d,title:n.title,body:n.body,tags:n.tags,pin:!!n.pin,t:n.t});
+function normNote(n,id){return {id,d:typeof n.d==="string"?n.d:"log",title:String(n.title||""),body:String(n.body||""),tags:toArr(n.tags).map(String),pin:!!n.pin,t:+n.t||Date.now()}}
+function sampleNotes(){
   const t=Date.now(), day=864e5;
-  notes=[
+  return [
     {id:"s1",d:"dream",title:"끝없이 이어진 도서관",body:"책장이 하늘까지 이어져 있었고, 사다리를 타고 올라갈수록 책 제목이 내가 쓴 문장으로 바뀌었다.",tags:["도서관","반복되는 꿈"],pin:true,t:t-day},
     {id:"s2",d:"log",title:"아침 산책",body:"바람이 선선해서 평소보다 오래 걸었다. 머릿속이 조금 정리된 느낌.",tags:["일상"],pin:false,t:t-2*day},
     {id:"s3",d:"idea",title:"서랍 모양 메모 앱",body:"메모를 칸에 넣고 꺼내 보는 방식. 오래 열지 않은 서랍은 먼지가 쌓이는 표시?",tags:["앱","UI"],pin:true,t:t-3*day},
@@ -301,9 +314,87 @@ function load(){
     {id:"s5",d:"read",title:"다시 읽고 싶은 문장",body:"출처와 함께 적어두기. 마음에 남은 문장은 바로 여기에.",tags:["문장"],pin:false,t:t-4*day},
     {id:"s6",d:"thanks",title:"따뜻한 국물",body:"퇴근길에 먹은 따뜻한 국물 한 그릇이 오늘 하루를 살렸다.",tags:["하루"],pin:false,t:t-5*day}
   ];
-  save();
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(notes))}catch(e){toast("저장하지 못했어요. 내보내기로 백업해 주세요.")}}
+/* 첫 화면용 캐시(이 기기). 진짜 데이터는 공유 저장소에 있어요. */
+function load(){
+  try{const r=localStorage.getItem(KEY);if(r){notes=JSON.parse(r);notes.forEach(n=>{if(!dmap[n.d])n.d="log"});return}}catch(e){}
+  notes=[];
+}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(notes))}catch(e){}}
+
+function setSync(t,err){const s=$("#sync");if(!s)return;s.textContent=t;s.classList.toggle("err",!!err)}
+function enqueue(op){seq++;queue.push(op);setSync("저장 중…");flush()}
+const dbPut=(path,val)=>enqueue({m:"PUT",p:path,b:val});
+const dbPatch=(path,val)=>enqueue({m:"PATCH",p:path,b:val});
+const dbDel=path=>enqueue({m:"DELETE",p:path});
+async function flush(){
+  if(flushing)return;
+  flushing=true;let ok=true;
+  try{
+    while(queue.length){
+      const op=queue[0];
+      const r=await fetch(DB_ROOT+op.p+".json",{method:op.m,headers:{"Content-Type":"application/json"},body:op.m==="DELETE"?undefined:JSON.stringify(op.b)});
+      if(!r.ok)throw new Error(String(r.status));
+      queue.shift();
+    }
+  }catch(e){
+    ok=false;
+    if(/^40[13]$/.test(e.message)&&!ruleWarned){ruleWarned=true;toast("저장소 규칙에서 /thought-drawer 쓰기를 허용해 주세요")}
+  }
+  flushing=false;
+  if(ok){setSync("동기화됨 ✓");pull()}else setSync("저장 실패 · 재시도 중",true);
+}
+function addExtras(upd,rn,rd){   /* 이 기기에 있던 예전 메모·서랍을 한 번만 공유 저장소로 옮김 */
+  LOCAL0.notes.forEach(n=>{const id=cleanId(n.id);if(id&&!/^s\d$/.test(id)&&!rn[id])upd["notes/"+id]=noteBody(normNote(n,id))});
+  LOCAL0.custom.forEach(d=>{const id=cleanId(d.id);if(id&&!rd[id])upd["drawers/"+id]={name:d.name,icon:d.icon,color:d.color,t:d.t||Date.now()}});
+}
+function seedRemote(){
+  const upd={seeded:true};
+  sampleNotes().forEach(n=>{upd["notes/"+n.id]=noteBody(n)});
+  addExtras(upd,{},{});
+  try{localStorage.setItem(MKEY,"1")}catch(e){}
+  dbPatch("",upd);
+}
+function migrateOnce(w){
+  try{if(localStorage.getItem(MKEY))return false}catch(e){return false}
+  const upd={};addExtras(upd,w.notes||{},w.drawers||{});
+  try{localStorage.setItem(MKEY,"1")}catch(e){}
+  if(!Object.keys(upd).length)return false;
+  dbPatch("",upd);return true;
+}
+function apply(w){
+  synced=true;setSync("동기화됨 ✓");
+  const rn=w.notes||{}, rd=w.drawers||{};
+  const sig=JSON.stringify([rn,rd]);
+  if(sig===remoteSig)return;
+  remoteSig=sig;
+  custom=Object.entries(rd).filter(([,d])=>d&&typeof d==="object").map(([id,d])=>({id,name:String(d.name||"서랍").slice(0,12),icon:String(d.icon||"★").slice(0,2),color:COLORS.includes(d.color)?d.color:COLORS[0],hint:"직접 만든 서랍",custom:true,t:+d.t||0})).sort((a,b)=>a.t-b.t);
+  buildDrawers();
+  notes=Object.entries(rn).filter(([,n])=>n&&typeof n==="object").map(([id,n])=>normNote(n,id));
+  notes.forEach(n=>{if(!dmap[n.d])n.d="log"});
+  if(view!=="all"&&!dmap[view])view="all";
+  save();saveDrawers();render();
+}
+async function pull(){
+  if(pulling)return;
+  if(queue.length||flushing){flush();return}
+  pulling=true;const my=seq;
+  try{
+    let w;
+    try{
+      const r=await fetch(DB_ROOT+".json?_="+Date.now(),{cache:"no-store"});
+      if(!r.ok)throw new Error(String(r.status));
+      w=await r.json();
+    }catch(e){
+      setSync(/^40[13]$/.test(e.message)?"저장소 규칙 확인 필요":(synced?"오프라인":"오프라인 · 이 기기 저장본"),true);
+      return;
+    }
+    if(my!==seq||queue.length||flushing)return;   /* 읽는 사이 내가 쓴 게 있으면 다음 주기에 */
+    if(w==null||typeof w!=="object"){seedRemote();return}
+    if(migrateOnce(w))return;
+    apply(w);
+  }finally{pulling=false;if(loading){loading=false;render()}}
+}
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(toast.h);toast.h=setTimeout(()=>t.classList.remove("on"),2200)}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=t=>new Date(t).toLocaleDateString("ko-KR",{month:"long",day:"numeric"});
@@ -349,7 +440,7 @@ function render(){
   $("#pinnedWrap").innerHTML=pins.length?`<h3 class="section-title">고정한 메모</h3><div class="grid">${pins.map(card).join("")}</div>`:"";
   $("#listWrap").innerHTML=list.length
     ?(rest.length?`<h3 class="section-title">${pins.length?"나머지 메모":"최근 메모"}</h3><div class="grid">${rest.map(card).join("")}</div>`:"")
-    :`<div class="empty">${q?"검색 결과가 없어요. 다른 단어로 찾아보세요.":"이 서랍은 비어 있어요. 위의 입력창에 첫 메모를 넣어보세요."}</div>`;
+    :`<div class="empty">${loading?"공유 서랍을 불러오는 중이에요…":q?"검색 결과가 없어요. 다른 단어로 찾아보세요.":"이 서랍은 비어 있어요. 위의 입력창에 첫 메모를 넣어보세요."}</div>`;
 }
 
 /* 편집 */
@@ -367,8 +458,8 @@ function openDlg(id){
 $("#form").addEventListener("submit",e=>{
   const tags=$("#fTags").value.split(",").map(s=>s.trim().replace(/^#/,"")).filter(Boolean);
   const data={d:$("#fDrawer").value,title:$("#fTitle").value.trim(),body:$("#fBody").value,tags};
-  if(editId){Object.assign(notes.find(n=>n.id===editId),data);toast("수정했어요")}
-  else{notes.push({id:"n"+Date.now(),pin:false,t:Date.now(),...data});toast("서랍에 넣었어요")}
+  if(editId){const n=notes.find(n=>n.id===editId);Object.assign(n,data);dbPatch("/notes/"+n.id,noteBody(n));toast("수정했어요")}
+  else{const n={id:newId("n"),pin:false,t:Date.now(),...data};notes.push(n);dbPut("/notes/"+n.id,noteBody(n));toast("서랍에 넣었어요")}
   save();render();
 });
 $("#cancel").onclick=()=>$("#dlg").close();
@@ -376,7 +467,8 @@ $("#newBtn").onclick=()=>openDlg();
 
 function quickAdd(){
   const v=$("#qText").value.trim(); if(!v)return;
-  notes.push({id:"n"+Date.now(),d:$("#qDrawer").value,title:v.length>30?v.slice(0,30)+"…":v,body:v.length>30?v:"",tags:[],pin:false,t:Date.now()});
+  const n={id:newId("n"),d:$("#qDrawer").value,title:v.length>30?v.slice(0,30)+"…":v,body:v.length>30?v:"",tags:[],pin:false,t:Date.now()};
+  notes.push(n);dbPut("/notes/"+n.id,noteBody(n));
   $("#qText").value="";save();render();toast("서랍에 넣었어요");
 }
 $("#qAdd").onclick=quickAdd;
@@ -391,8 +483,9 @@ function openDDlg(){
 }
 $("#dform").addEventListener("submit",()=>{
   const name=$("#dName").value.trim();if(!name)return;
-  const id="c"+Date.now();
-  custom.push({id,name,icon:$("input[name=dIcon]:checked").value,color:$("input[name=dColor]:checked").value,hint:"직접 만든 서랍",custom:true});
+  const id=newId("c");
+  const nd={id,name,icon:$("input[name=dIcon]:checked").value,color:$("input[name=dColor]:checked").value,hint:"직접 만든 서랍",custom:true,t:Date.now()};
+  custom.push(nd);dbPut("/drawers/"+id,{name:nd.name,icon:nd.icon,color:nd.color,t:nd.t});
   saveDrawers();buildDrawers();view=id;render();toast("새 서랍을 만들었어요");
 });
 $("#dCancel").onclick=()=>$("#ddlg").close();
@@ -400,16 +493,17 @@ $("#delDrawerBtn").onclick=()=>{
   const d=dmap[view];if(!d||!d.custom)return;
   const n=notes.filter(x=>x.d===d.id).length;
   if(!confirm("'"+d.name+"' 서랍을 삭제할까요?"+(n?" 안의 메모 "+n+"개는 '기록' 서랍으로 옮겨져요.":"")))return;
-  notes.forEach(x=>{if(x.d===d.id)x.d="log"});
-  custom=custom.filter(c=>c.id!==d.id);saveDrawers();save();buildDrawers();view="all";render();toast("서랍을 삭제했어요");
+  const upd={["drawers/"+d.id]:null};
+  notes.forEach(x=>{if(x.d===d.id){x.d="log";upd["notes/"+x.id+"/d"]="log"}});
+  custom=custom.filter(c=>c.id!==d.id);dbPatch("",upd);saveDrawers();save();buildDrawers();view="all";render();toast("서랍을 삭제했어요");
 };
 $("#drawers").addEventListener("click",e=>{if(e.target.closest("[data-add]")){openDDlg();return}const b=e.target.closest("[data-v]");if(b){view=b.dataset.v;render()}});
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-a]");if(!b)return;
   const n=notes.find(x=>x.id===b.dataset.id);if(!n)return;
-  if(b.dataset.a==="pin"){n.pin=!n.pin;save();render()}
+  if(b.dataset.a==="pin"){n.pin=!n.pin;dbPatch("/notes/"+n.id,{pin:n.pin});save();render()}
   if(b.dataset.a==="edit")openDlg(n.id);
-  if(b.dataset.a==="del"&&confirm("이 메모를 삭제할까요?")){notes=notes.filter(x=>x!==n);save();render();toast("삭제했어요")}
+  if(b.dataset.a==="del"&&confirm("이 메모를 삭제할까요?")){notes=notes.filter(x=>x!==n);dbDel("/notes/"+n.id);save();render();toast("삭제했어요")}
 });
 $("#search").addEventListener("input",e=>{query=e.target.value;render()});
 
@@ -424,14 +518,21 @@ $("#importFile").addEventListener("change",e=>{
   const f=e.target.files[0];if(!f)return;
   f.text().then(t=>{
     try{const data=JSON.parse(t);const arr=Array.isArray(data)?data:data.notes;if(!Array.isArray(arr))throw 0;
+      const upd={};
       if(!Array.isArray(data)&&Array.isArray(data.drawers)){
-        data.drawers.filter(d=>d&&d.id&&d.name).forEach(d=>{const id=String(d.id).replace(/[^\w-]/g,"");
-          if(id&&!dmap[id])custom.push({id,name:String(d.name).slice(0,12),icon:String(d.icon||"★").slice(0,2),color:COLORS.includes(d.color)?d.color:COLORS[0],hint:"직접 만든 서랍",custom:true});
-          buildDrawers()});
+        data.drawers.filter(d=>d&&d.id&&d.name).forEach(d=>{const id=cleanId(d.id);
+          if(id&&!dmap[id]){
+            const nd={id,name:String(d.name).slice(0,12),icon:String(d.icon||"★").slice(0,2),color:COLORS.includes(d.color)?d.color:COLORS[0],hint:"직접 만든 서랍",custom:true,t:Date.now()};
+            custom.push(nd);buildDrawers();upd["drawers/"+id]={name:nd.name,icon:nd.icon,color:nd.color,t:nd.t};
+          }});
         saveDrawers();
       }
       const ids=new Set(notes.map(n=>n.id));
-      arr.filter(n=>n&&n.id&&dmap[n.d]&&!ids.has(n.id)).forEach(n=>notes.push({pin:false,tags:[],body:"",t:Date.now(),...n}));
+      arr.filter(n=>n&&n.id&&dmap[n.d]&&!ids.has(cleanId(n.id))).forEach(n=>{
+        const id=cleanId(n.id);const note=normNote({pin:false,...n},id);
+        notes.push(note);ids.add(id);upd["notes/"+id]=noteBody(note);
+      });
+      if(Object.keys(upd).length)dbPatch("",upd);
       save();render();toast("불러왔어요");
     }catch(_){toast("올바른 백업 파일이 아니에요")}
   });e.target.value="";
@@ -441,7 +542,13 @@ $("#themeBtn").onclick=()=>{
   r.dataset.theme=r.dataset.theme==="light"?"dark":"light";
 };
 
-load();render();
+load();
+const LOCAL0={notes:notes.map(n=>({...n})),custom:custom.map(d=>({...d}))};
+render();pull();
+setInterval(()=>{if(document.visibilityState==="visible")pull()},POLL_MS);
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pull()});
+addEventListener("online",pull);
+addEventListener("beforeunload",e=>{if(queue.length){e.preventDefault();e.returnValue=""}});
 </script>
 </body>
 </html>
