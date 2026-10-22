@@ -2,52 +2,65 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
 <title>Thought Drawer</title>
+<meta name="theme-color" content="#fdf8ee">
+<script>try{var t=localStorage.getItem("thought-drawer-theme");if(t==="white"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Thought Drawer">
 <style>
 /* ── 테마: 열대 바다 위에 뜬 Fluent 유리창 ── */
-:root{
-  color-scheme:dark;
-  --glass:rgba(20,28,36,.70); --bar:rgba(8,14,20,.55);
+:root{   /* 기본: 노트 — 크림색 종이, 남색 줄선, 주황빨강 제목 */
+  color-scheme:light;
+  --sys:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Segoe UI",Roboto,sans-serif;
+  --serif:var(--sys);
+  --bg:#fdf8ee; --glass:#fdf8ee; --bar:#fdf8ee;
+  --card:transparent; --card-hi:rgba(61,75,176,.06); --ink:#262c63; --muted:#6a6e96; --line:rgba(61,75,176,.45);
+  --rule:#3d4bb0; --red:#ef5530;
+  --accent:#3d4bb0; --on-accent:#fff; --focus:#ef5530; --star:#ef5530; --shadow:rgba(38,44,99,.14);
+  --c-x1:#2f7fb8; --c-x2:#c04d84; --c-x3:#d26a13; --c-x4:#5f8f1a; --c-x5:#9a7444; --c-x6:#5a7088;
+  --c-dream:#5b6bd6; --c-log:#16907f; --c-idea:#d29a0e; --c-todo:#ef5530; --c-read:#8452d6; --c-thanks:#3f9a47;
+}
+:root[data-theme="white"]{ --bg:#ffffff; --glass:#ffffff; --bar:#ffffff; --card-hi:rgba(61,75,176,.05) }
+:root[data-theme="dark"]{   /* 예전 열대 바다 */
+  color-scheme:dark; --rule:rgba(255,255,255,.4); --red:#ffb38f;
+  --bg:#0b57b3; --glass:rgba(20,28,36,.70); --bar:rgba(8,14,20,.55);
   --card:rgba(255,255,255,.07); --card-hi:rgba(255,255,255,.12);
   --ink:#f3f7fa; --muted:#aebfcc; --line:rgba(255,255,255,.15);
   --accent:#4cc9f0; --on-accent:#05222e; --focus:#8fe6ff; --star:#ffd166; --shadow:rgba(0,10,30,.45);
   --c-x1:#6cc4ff; --c-x2:#ff8fc1; --c-x3:#ffa95c; --c-x4:#b6e35a; --c-x5:#e0c3a0; --c-x6:#a0b4c8;
   --c-dream:#9aa9ff; --c-log:#4fd8c8; --c-idea:#ffd166; --c-todo:#ff9582; --c-read:#c2a8ff; --c-thanks:#8be08f;
 }
-:root[data-theme="light"]{
-  color-scheme:light;
-  --glass:rgba(244,250,253,.72); --bar:rgba(255,255,255,.55);
-  --card:rgba(255,255,255,.62); --card-hi:rgba(255,255,255,.9);
-  --ink:#10202c; --muted:#4a6070; --line:rgba(16,32,44,.15);
-  --accent:#0a79c4; --on-accent:#fff; --focus:#005a9e; --star:#b7791f; --shadow:rgba(0,40,90,.3);
-  --c-x1:#1f7fc4; --c-x2:#cc4a8a; --c-x3:#d26a13; --c-x4:#6d9a14; --c-x5:#a07b45; --c-x6:#5a7088;
-  --c-dream:#5b6bd6; --c-log:#0e9d8e; --c-idea:#c58a0a; --c-todo:#d4553f; --c-read:#8452d6; --c-thanks:#3f9a47;
-}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+.tagbar:empty,.stats:empty{display:none!important}
 html{height:100%}
-body{margin:0;min-height:100%;background:#0b57b3;color:var(--ink);
-  font-family:"Segoe UI Variable","Segoe UI","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif;line-height:1.6;font-size:15px}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
+  font-family:var(--sys,system-ui),sans-serif;line-height:1.6;font-size:15px}
 h1,h2,h3{margin:0;font-weight:600}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 
 /* 배경: 열대 바다(SVG) */
-.wallpaper{position:fixed;inset:0;width:100%;height:100%;z-index:-1}
+.wallpaper{position:fixed;inset:0;width:100%;height:100%;z-index:-1;display:none}
+:root[data-theme="dark"] .wallpaper{display:block}
 
 /* 유리창 */
 .window{display:flex;flex-direction:column;height:calc(100dvh - 40px);max-width:1280px;margin:20px auto;
   background:var(--glass);backdrop-filter:blur(30px) saturate(1.5);-webkit-backdrop-filter:blur(30px) saturate(1.5);
   border:1px solid var(--line);border-radius:12px;box-shadow:0 24px 60px var(--shadow),0 2px 8px var(--shadow);overflow:hidden}
 .titlebar{display:flex;align-items:center;gap:10px;height:40px;padding-left:14px;background:var(--bar);border-bottom:1px solid var(--line);font-size:12px;flex:none}
-.titlebar .ico{width:16px;height:16px;border-radius:4px;background:linear-gradient(135deg,#4cc9f0,#1a6fd0);display:inline-block}
+.titlebar .ico{width:16px;height:16px;border-radius:4px;background:var(--accent);display:inline-block}
 .sync{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
 .sync.err{color:var(--c-todo)}
 .wc{margin-left:8px;display:flex;height:100%;pointer-events:none;user-select:none}
 .wc i{width:46px;display:grid;place-items:center;font-style:normal;color:var(--muted);font-size:12px}
 
-.app{flex:1;min-height:0;display:grid;grid-template-columns:250px 1fr}
+.app{flex:1;min-height:0;display:grid;grid-template-columns:280px 1fr}
 
 /* 서랍장 */
 .cabinet{padding:22px 12px;border-right:1px solid var(--line);overflow:auto}
@@ -90,10 +103,34 @@ main>*{flex-shrink:0}
 .meta{display:flex;justify-content:space-between;align-items:center;margin-top:auto;font-size:12px;color:var(--muted);gap:8px}
 .tags{display:flex;gap:6px;flex-wrap:wrap}
 .tag{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:0 9px}
+button.tag{cursor:pointer;color:inherit;font-size:inherit;line-height:inherit}
+button.tag:hover{border-color:var(--accent);color:var(--ink)}
+.tagbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:-8px 0 22px}
+.tagbar .lbl{font-size:13px;color:var(--muted);margin-right:2px}
+.tagbar button{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13px;color:var(--ink)}
+.tagbar button small{color:var(--muted);margin-left:4px;font-size:12px}
+.tagbar button:hover{border-color:var(--accent)}
+.tagbar button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.tagbar button[aria-pressed="true"] small{color:inherit;opacity:.8}
+.tpick{flex-wrap:wrap!important;margin:2px 0 4px!important;padding:0!important;overflow:visible!important}
+.tpick:empty{display:none}
+.due{font-size:12px;border-radius:999px;padding:0 8px;border:1px solid var(--line);background:var(--card-hi);white-space:nowrap}
+.due.soon{color:var(--c-idea);border-color:var(--c-idea)}
+.due.over{color:var(--c-todo);border-color:var(--c-todo);font-weight:600}
+.chk{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--ink);margin:-2px 0 12px}
+.chk input{width:18px;height:18px;accent-color:var(--accent)}
 .acts{display:flex;gap:2px}
 .acts button{background:none;border:0;padding:4px 6px;color:var(--muted);border-radius:4px;font-size:13px}
 .acts button:hover{color:var(--ink);background:var(--card-hi)}
 .pin-on{color:var(--star)!important}
+.nt{display:flex;gap:10px;align-items:flex-start}
+.nt h3{flex:1;min-width:0}
+.circ{flex:none;width:24px;height:24px;margin-top:1px;border-radius:50%;border:1.5px solid var(--accent);background:transparent;padding:0;display:grid;place-items:center;color:transparent;font-size:13px;line-height:1}
+.circ:hover{background:var(--card-hi);color:var(--accent)}
+.circ.on{background:var(--accent);color:var(--on-accent)}
+.note.is-done{opacity:.78}
+.note.is-done h3{text-decoration:line-through;text-decoration-color:var(--muted)}
+.drawer.donebox{margin-top:6px}
 .empty{padding:36px 20px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:8px}
 
 /* 하단 플로팅 툴바 (이미지 하단의 알약형 바) */
@@ -146,21 +183,111 @@ dialog h3{font-size:20px;margin-bottom:14px}
   .cab-foot{margin-top:10px;padding:0}
   main{overflow:visible;padding:16px 14px 10px}
   .top{margin-bottom:14px;gap:10px}
-  .top>div{flex:1;min-width:0}
+  .top>div{flex:1 1 100%;min-width:0}
+  .top .ghost,.top .btn{flex:1 1 0;white-space:nowrap}
   .top h2{font-size:24px}
   .search{order:3;flex:1 1 100%;max-width:none;min-width:0}
   .stats{gap:6px;margin-bottom:18px}
+  .tagbar{flex-wrap:nowrap;overflow-x:auto;margin:-6px -14px 18px;padding:2px 14px;scrollbar-width:none}
+  .tagbar button,.tagbar .lbl{flex:none}
   .stat{flex:1 1 calc(33.333% - 6px);min-width:0;padding:8px 10px}
   .stat b{font-size:20px}
   .grid{grid-template-columns:1fr}
   .acts button{padding:8px 10px}
   .quick{border-radius:20px;padding:8px;bottom:calc(8px + env(safe-area-inset-bottom));margin-bottom:8px}
-  .quick select{flex:0 0 auto;max-width:42%}
+  .quick select{flex:1 1 calc(50% - 4px);max-width:none;min-width:0}
   .quick input{flex:1 1 0;min-width:0}
-  .quick .btn{flex:1 1 100%;border-radius:12px}
+  .quick .btn{flex:0 0 auto;border-radius:12px}
   dialog{max-height:90dvh;overflow:auto;padding:18px}
   .toast{bottom:calc(110px + env(safe-area-inset-bottom));max-width:90vw;text-align:center}
 }
+
+/* ── 노트 디자인: 바다 테마가 아닐 때 ── */
+html:not([data-theme="dark"]) body{background:var(--bg)}
+html:not([data-theme="dark"]) .window{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;border:0;border-radius:0;box-shadow:none;margin:0 auto;height:100dvh;max-width:1180px}
+html:not([data-theme="dark"]) .titlebar{background:transparent;border:0;height:28px}
+html:not([data-theme="dark"]) .titlebar .ico,html:not([data-theme="dark"]) .titlebar>span:nth-child(2),html:not([data-theme="dark"]) .wc{display:none}
+html:not([data-theme="dark"]) .cabinet{border-right:0;padding-top:4px}
+html:not([data-theme="dark"]) .brand h1{font-family:var(--serif);font-weight:700;color:var(--red);font-size:36px;line-height:1.05;letter-spacing:-.5px}
+html:not([data-theme="dark"]) .brand p{color:var(--accent);margin-top:8px}
+html:not([data-theme="dark"]) .ghost{background:transparent;border:1px solid var(--line);color:var(--accent);border-radius:4px}
+html:not([data-theme="dark"]) .ghost:hover{background:var(--card-hi);color:var(--accent)}
+html:not([data-theme="dark"]) .btn{border-radius:4px}
+/* 본문 왼쪽: 노트의 빨간 두 줄 여백선 */
+html:not([data-theme="dark"]) main{padding-left:52px;background:linear-gradient(to right,transparent 22px,var(--red) 22px,var(--red) 23px,transparent 23px,transparent 27px,var(--red) 27px,var(--red) 28px,transparent 28px)}
+html:not([data-theme="dark"]) .top h2{font-family:var(--serif);font-weight:700;color:var(--red);font-size:34px;line-height:1.15;letter-spacing:-.5px}
+html:not([data-theme="dark"]) .top .sub{color:var(--accent)}
+html:not([data-theme="dark"]) .search{background:transparent;border:0;border-bottom:1.5px solid var(--rule);border-radius:0;padding-left:4px}
+html:not([data-theme="dark"]) .stat{background:transparent;border:1px solid var(--line);border-radius:2px}
+html:not([data-theme="dark"]) .stat b{font-family:var(--serif);font-weight:700;color:var(--accent)}
+html:not([data-theme="dark"]) .stat span::before,html:not([data-theme="dark"]) .note .tags>.tag:first-child::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:1px}
+html:not([data-theme="dark"]) .tag,html:not([data-theme="dark"]) .tagbar button{background:transparent;border-color:var(--line);color:var(--accent)}
+html:not([data-theme="dark"]) .tagbar button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+html:not([data-theme="dark"]) .tagbar .lbl{font-family:var(--serif);color:var(--red);font-size:16px}
+/* 메모 목록 = 줄 노트 */
+html:not([data-theme="dark"]) .section-title{font-family:var(--serif);font-weight:700;color:var(--accent);font-size:19px;border-top:2px solid var(--rule);border-bottom:1.5px solid var(--rule);padding:7px 4px;margin:0}
+html:not([data-theme="dark"]) .grid{display:block;margin-bottom:30px;border-top:2px solid var(--rule)}
+html:not([data-theme="dark"]) .note{border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:12px 6px 8px;min-height:0;gap:6px}
+html:not([data-theme="dark"]) .note:hover{background:var(--card-hi)}
+html:not([data-theme="dark"]) .note h3{color:var(--ink);font-size:16px}
+html:not([data-theme="dark"]) .note p{-webkit-line-clamp:2;color:var(--ink);opacity:.8;font-size:14px}
+html:not([data-theme="dark"]) .nt~p,html:not([data-theme="dark"]) .nt~.meta,html:not([data-theme="dark"]) .nt~.acts{margin-left:34px}
+html:not([data-theme="dark"]) .acts button{color:var(--muted)}
+html:not([data-theme="dark"]) .empty{border:1.5px dashed var(--line);border-radius:2px;color:var(--accent)}
+/* 빠른 입력 = Memo 상자 */
+html:not([data-theme="dark"]) .quick{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;border:1.5px solid var(--rule);border-radius:4px;box-shadow:0 -6px 18px var(--bg);padding:10px 8px 8px}
+html:not([data-theme="dark"]) .quick::before{content:"Memo";position:absolute;top:-12px;left:14px;background:var(--bg);padding:0 6px;font-family:var(--serif);color:var(--red);font-size:16px;line-height:22px}
+html:not([data-theme="dark"]) .quick select{background:transparent;border:1px solid var(--line);border-radius:4px;color:var(--accent)}
+html:not([data-theme="dark"]) .quick .btn{border-radius:4px}
+/* 대화상자 */
+html:not([data-theme="dark"]) dialog{background:var(--bg);backdrop-filter:none;-webkit-backdrop-filter:none;border:1.5px solid var(--rule);border-radius:4px}
+html:not([data-theme="dark"]) dialog::backdrop{background:rgba(38,44,99,.28)}
+html:not([data-theme="dark"]) dialog h3{font-family:var(--serif);font-weight:700;color:var(--red);font-size:28px;border-bottom:2px solid var(--rule);padding-bottom:8px}
+html:not([data-theme="dark"]) .f{color:var(--accent)}
+html:not([data-theme="dark"]) .f input,html:not([data-theme="dark"]) .f select,html:not([data-theme="dark"]) .f textarea{background:transparent;border:1px solid var(--line);border-bottom:1.5px solid var(--rule);border-radius:2px}
+html:not([data-theme="dark"]) .f textarea{line-height:26px!important;padding:6px 10px;background-image:linear-gradient(transparent 25px,var(--line) 25px,var(--line) 26px,transparent 26px);background-size:100% 26px;background-position:0 6px;background-attachment:local}
+html:not([data-theme="dark"]) .opt span{background:transparent}
+html:not([data-theme="dark"]) .toast{background:var(--accent);color:var(--on-accent);border:0;backdrop-filter:none}
+@media (max-width:760px){
+  html:not([data-theme="dark"]) .window{height:auto;min-height:100dvh}
+  html:not([data-theme="dark"]) .titlebar{height:26px}
+  html:not([data-theme="dark"]) .cabinet{border-bottom:2px solid var(--rule);padding-top:0}
+  html:not([data-theme="dark"]) .brand h1{font-size:32px}
+  html:not([data-theme="dark"]) main{padding:16px 14px 10px 30px;background:linear-gradient(to right,transparent 12px,var(--red) 12px,var(--red) 13px,transparent 13px,transparent 16px,var(--red) 16px,var(--red) 17px,transparent 17px)}
+  html:not([data-theme="dark"]) .top h2{font-size:32px}
+  html:not([data-theme="dark"]) .nt~p,html:not([data-theme="dark"]) .nt~.meta,html:not([data-theme="dark"]) .nt~.acts{margin-left:0}
+  html:not([data-theme="dark"]) .tagbar{margin-left:-30px;padding-left:30px}
+}
+/* ── 카테고리 6개: 3개씩 2줄 타일 ── */
+.drawers{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.drawers .drawer{flex-direction:column;justify-content:center;align-items:center;gap:0;width:auto;min-width:0;margin:0;padding:10px 4px 8px;
+  border:1px solid var(--line);border-radius:6px;text-align:center;background:transparent}
+.drawers .drawer:hover{background:var(--card-hi)}
+.drawers .drawer::before{display:none!important}
+.drawers .drawer .name{flex-direction:column;gap:2px;align-items:center;max-width:100%;font-size:15px;line-height:1.25}
+.drawers .drawer .name span[aria-hidden]{width:auto;font-size:18px}
+.drawers .drawer .count{font-size:12px}
+.drawers .drawer[aria-current="true"]{background:var(--accent);border-color:var(--accent)}
+.drawers .drawer[aria-current="true"] *{color:var(--on-accent)!important}
+html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);font-weight:600;font-size:16px;color:var(--accent)}
+#doneBtn[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+/* 검색창은 카테고리 아래, 메모 카드는 누르면 열림 */
+.cabinet .search{display:block;width:100%;max-width:none;margin-top:12px}
+.note[data-open]{cursor:pointer}
+.top{flex-wrap:nowrap;align-items:flex-start}
+.iconbtn{padding:4px 10px;font-size:15px;line-height:1.4}
+.quick .iconbtn{flex:0 0 auto;border-radius:4px}
+.note .meta{margin-top:2px}
+@media (max-width:760px){
+  .cabinet .search{margin-top:10px}
+  .top>div{flex:1 1 auto}
+  .top .ghost{flex:0 0 auto}
+}
+/* 카테고리 타일 높이 약 2/3: 아이콘을 이름 옆으로 */
+.drawers .drawer{padding:9px 4px 8px}
+.drawers .drawer .name{flex-direction:row;gap:5px;line-height:1.3}
+.drawers .drawer .name span[aria-hidden]{font-size:15px}
+.drawers .drawer .count{line-height:1.2}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -212,14 +339,16 @@ dialog h3{font-size:20px;margin-bottom:14px}
         <h1>Thought Drawer</h1>
         <p>흩어진 생각을 칸마다 넣어두는 곳</p>
       </div>
-      <nav class="drawers" id="drawers" aria-label="서랍 목록"></nav>
+      <nav class="drawers" id="drawers" aria-label="카테고리 목록"></nav>
       <div class="cab-foot">
+        <button class="ghost" id="doneBtn" aria-pressed="false">✓ 완료함 <span id="doneCount"></span></button>
         <button class="ghost" id="exportBtn">내보내기</button>
         <button class="ghost" id="importBtn">불러오기</button>
         <button class="ghost" id="themeBtn">테마</button>
         <button class="ghost" id="restoreBtn" hidden>기본 서랍 복원</button>
         <input type="file" id="importFile" accept="application/json" hidden>
       </div>
+      <input class="search" id="search" type="search" placeholder="제목, 내용, 태그 검색" aria-label="검색">
     </aside>
 
     <main>
@@ -228,19 +357,19 @@ dialog h3{font-size:20px;margin-bottom:14px}
           <h2 id="title">전체</h2>
           <div class="sub" id="sub"></div>
         </div>
-        <input class="search" id="search" type="search" placeholder="제목, 내용, 태그 검색" aria-label="검색">
-        <button class="ghost" id="editDrawerBtn" hidden>서랍 수정</button>
-        <button class="ghost" id="delDrawerBtn" hidden>서랍 삭제</button>
-        <button class="btn" id="newBtn">새 메모</button>
+        <button class="ghost iconbtn" id="editDrawerBtn" hidden aria-label="카테고리 수정" title="카테고리 수정">✎</button>
       </div>
 
       <div class="stats" id="stats"></div>
+      <div class="tagbar" id="tagBar" aria-label="태그로 모아보기"></div>
       <div id="pinnedWrap"></div>
       <div id="listWrap"></div>
 
       <div class="quick">
-        <select id="qDrawer" aria-label="넣을 서랍"></select>
-        <input id="qText" placeholder="떠오른 한 줄을 적고 Enter" aria-label="빠른 기록">
+        <select id="qDrawer" aria-label="넣을 카테고리"></select>
+        <select id="qTag" aria-label="태그"></select>
+        <input id="qText" placeholder="떠오른 한 줄" aria-label="빠른 기록">
+        <button class="ghost iconbtn" id="qMore" type="button" aria-label="자세히 쓰기" title="자세히 쓰기(내용·목표일)">✎</button>
         <button class="btn" id="qAdd">서랍에 넣기</button>
       </div>
     </main>
@@ -250,11 +379,16 @@ dialog h3{font-size:20px;margin-bottom:14px}
 <dialog id="dlg">
   <form method="dialog" id="form">
     <h3 id="dlgTitle">새 메모</h3>
-    <label class="f">서랍<select id="fDrawer"></select></label>
+    <label class="f">카테고리<select id="fDrawer"></select></label>
     <label class="f">제목<input id="fTitle" maxlength="80" required></label>
     <label class="f">내용<textarea id="fBody"></textarea></label>
-    <label class="f">태그 (쉼표로 구분)<input id="fTags" placeholder="예: 바다, 가족"></label>
+    <div class="f">태그 <span style="font-size:12px">— 눌러서 고르거나 직접 입력(쉼표로 구분)</span>
+      <div class="tagbar tpick" id="fTagPick"></div>
+      <input id="fTags" placeholder="예: 바다, 가족" aria-label="태그 직접 입력">
+    </div>
+    <label class="f" id="fDueWrap">목표 완료일<input type="date" id="fDue"></label>
     <div class="row">
+      <button type="button" class="ghost" id="delNote" hidden style="margin-right:auto;color:var(--c-todo)">삭제</button>
       <button type="button" class="ghost" id="cancel">닫기</button>
       <button type="submit" class="btn">저장</button>
     </div>
@@ -262,9 +396,11 @@ dialog h3{font-size:20px;margin-bottom:14px}
 </dialog>
 <dialog id="ddlg">
   <form method="dialog" id="dform">
-    <h3 id="dTitle">새 서랍 만들기</h3>
-    <label class="f">이름<input id="dName" maxlength="12" required placeholder="예: 여행, 운동, 레시피"></label>
-    <label class="f">설명 (선택)<input id="dHint" maxlength="30" placeholder="서랍 이름 아래에 보여요"></label>
+    <h3 id="dTitle">새 카테고리 만들기</h3>
+    <label class="f">이름<input id="dName" maxlength="12" required placeholder="예: Study, Travel"></label>
+    <label class="f">설명 (선택)<input id="dHint" maxlength="40" placeholder="서랍 이름 아래에 보여요"></label>
+    <label class="f">기본 태그 (쉼표로 구분)<input id="dTags" placeholder="예: 독서, 여행, 영화"></label>
+    <label class="chk"><input type="checkbox" id="dTrack">목표 완료일과 완료 체크 사용</label>
     <div class="f">아이콘<div class="pick" id="dIcons"></div></div>
     <div class="f">색<div class="pick" id="dColors"></div></div>
     <div class="row">
@@ -276,13 +412,14 @@ dialog h3{font-size:20px;margin-bottom:14px}
 <div class="toast" id="toast" role="status"></div>
 
 <script>
+/* id는 예전 서랍과 같게 유지 → 기존 메모가 자동으로 새 카테고리로 들어감 */
 const BASE_DRAWERS=[
-  {id:"dream",name:"꿈",icon:"☾",color:"--c-dream",hint:"깨자마자 적은 장면과 느낌"},
-  {id:"log",name:"기록",icon:"✎",color:"--c-log",hint:"오늘 있었던 일과 생각"},
-  {id:"idea",name:"아이디어",icon:"✦",color:"--c-idea",hint:"언젠가 쓸 씨앗들"},
-  {id:"todo",name:"할 일",icon:"☐",color:"--c-todo",hint:"잊지 말아야 할 것"},
-  {id:"read",name:"읽을거리",icon:"❏",color:"--c-read",hint:"책, 영상, 링크, 문장"},
-  {id:"thanks",name:"감사",icon:"♡",color:"--c-thanks",hint:"고마웠던 순간"}
+  {id:"dream",name:"Dream",icon:"☾",color:"--c-dream",hint:"수면 기록, 감정·기분, 주간/월간 회고",tags:["꿈","일기","감사"]},
+  {id:"log",name:"Archive",icon:"❏",color:"--c-log",hint:"생활 정보, 뉴스·기사 요약, 독서 구절",tags:["기억","정보","문장"]},
+  {id:"idea",name:"Ideas",icon:"✦",color:"--c-idea",hint:"업무 아이디어부터 소설·그림·취미 영감까지",tags:["IT","글감","그림","영감","기타취미"]},
+  {id:"todo",name:"Tasks",icon:"☐",color:"--c-todo",hint:"단기 할 일과 목표별 체크리스트",tags:["To-Do","단기","장기","진행중"],track:true},
+  {id:"read",name:"Wishlist",icon:"♡",color:"--c-read",hint:"읽을 책, 볼 영화, 가볼 곳, 살 것",tags:["독서","여행","물건","영화"]},
+  {id:"life",name:"Life",icon:"☀",color:"--c-thanks",hint:"매일 반복하는 습관, 식단, 운동 기록",tags:["쇼핑","건강","운동"],track:true}
 ];
 const KEY="thought-drawer-v1";
 const $=s=>document.querySelector(s);
@@ -290,9 +427,10 @@ const DKEY="thought-drawer-custom-v1";
 const ICONS=["★","♪","⌂","✈","☕","✿","☀","⚑","♟","✉","☘","⚙"];
 const COLORS=["--c-x1","--c-x2","--c-x3","--c-x4","--c-x5","--c-x6"];
 const BASE_COLORS=BASE_DRAWERS.map(d=>d.color), BASE_ICONS=BASE_DRAWERS.map(d=>d.icon);
-const ALLCOLORS=[...BASE_COLORS,...COLORS], ALLICONS=[...BASE_ICONS,...ICONS];
+const ALLCOLORS=[...BASE_COLORS,...COLORS], ALLICONS=[...new Set([...BASE_ICONS,...ICONS])];
+const splitTags=v=>(Array.isArray(v)?v:String(v||"").split(",")).map(x=>String(x).trim().replace(/^#/,"")).filter(Boolean).filter((x,i,a)=>a.indexOf(x)===i).slice(0,30);
 const BASE_IDS=new Set(BASE_DRAWERS.map(d=>d.id));
-const MODKEY="thought-drawer-mods-v1";
+const MODKEY="thought-drawer-mods-v2", MODP="drawerMods2";
 let custom=[];try{custom=JSON.parse(localStorage.getItem(DKEY))||[]}catch(e){}
 /* 기본 서랍(꿈·기록 등)의 수정/삭제 내용: {id:{name,icon,color,hint}} 또는 {id:{del:true}} */
 let mods={};try{mods=JSON.parse(localStorage.getItem(MODKEY))||{}}catch(e){}
@@ -300,15 +438,17 @@ let DRAWERS=[],dmap={};
 function buildDrawers(){
   const base=BASE_DRAWERS.filter(d=>!(mods[d.id]&&mods[d.id].del)).map(d=>{
     const m=mods[d.id];if(!m)return d;
-    return {...d,name:m.name||d.name,icon:m.icon||d.icon,color:ALLCOLORS.includes(m.color)?m.color:d.color,hint:m.hint||d.hint};
+    return {...d,name:m.name||d.name,icon:m.icon||d.icon,color:ALLCOLORS.includes(m.color)?m.color:d.color,hint:m.hint||d.hint,
+      tags:typeof m.tags==="string"?splitTags(m.tags):d.tags,track:typeof m.track==="boolean"?m.track:!!d.track};
   });
-  DRAWERS=[...base,...custom];dmap=Object.fromEntries(DRAWERS.map(d=>[d.id,d]));
+  DRAWERS=base;dmap=Object.fromEntries(DRAWERS.map(d=>[d.id,d]));
 }
 const fbId=()=>dmap.log?"log":(DRAWERS[0]?DRAWERS[0].id:"log");   /* 서랍이 없어진 메모가 갈 곳 */
 function saveDrawers(){try{localStorage.setItem(DKEY,JSON.stringify(custom))}catch(e){toast("서랍을 저장하지 못했어요. 내보내기로 백업해 주세요.")}}
 function saveMods(){try{localStorage.setItem(MODKEY,JSON.stringify(mods))}catch(e){}}
 buildDrawers();
-let notes=[], view="all", query="", editId=null, dEditId=null;
+let lastCat="dream";
+let notes=[], view=(()=>{try{return localStorage.getItem("thought-drawer-view")||"dream"}catch(e){return "dream"}})(), query="", tagF="", editId=null, dEditId=null;
 
 /* 저장: 이 기기 캐시 + 공유 저장소(Firebase Realtime Database) */
 const DB_URL="https://andong-trip-default-rtdb.asia-southeast1.firebasedatabase.app";
@@ -319,8 +459,11 @@ let loading=true, synced=false, remoteSig="", queue=[], flushing=false, pulling=
 const cleanId=s=>String(s==null?"":s).replace(/[.#$\[\]\/\s]/g,"_").slice(0,60);
 const newId=p=>p+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const toArr=v=>Array.isArray(v)?v:(v&&typeof v==="object"?Object.values(v):[]);
-const noteBody=n=>({d:n.d,title:n.title,body:n.body,tags:n.tags,pin:!!n.pin,t:n.t});
-function normNote(n,id){return {id,d:typeof n.d==="string"?n.d:"log",title:String(n.title||""),body:String(n.body||""),tags:toArr(n.tags).map(String),pin:!!n.pin,t:+n.t||Date.now()}}
+const noteBody=n=>({d:n.d,title:n.title,body:n.body,tags:n.tags,pin:!!n.pin,t:n.t,done:n.done||0,due:n.due||"",u:n.u||n.t});
+function normNote(n,id){
+  let d=typeof n.d==="string"?n.d:"log", tags=toArr(n.tags).map(String);
+  if(d==="thanks"){d="dream";if(!tags.includes("감사"))tags.push("감사")}
+  return {id,d,title:String(n.title||""),body:String(n.body||""),tags,pin:!!n.pin,t:+n.t||Date.now(),u:+n.u||+n.t||Date.now(),done:+n.done||0,due:/^\d{4}-\d{2}-\d{2}$/.test(n.due)?n.due:""}}
 function sampleNotes(){
   const t=Date.now(), day=864e5;
   return [
@@ -334,7 +477,7 @@ function sampleNotes(){
 }
 /* 첫 화면용 캐시(이 기기). 진짜 데이터는 공유 저장소에 있어요. */
 function load(){
-  try{const r=localStorage.getItem(KEY);if(r){notes=JSON.parse(r);notes.forEach(n=>{if(!dmap[n.d])n.d=fbId()});return}}catch(e){}
+  try{const r=localStorage.getItem(KEY);if(r){notes=JSON.parse(r).map(n=>normNote(n,n.id));notes.forEach(n=>{if(!dmap[n.d])n.d=fbId()});return}}catch(e){}
   notes=[];
 }
 function save(){try{localStorage.setItem(KEY,JSON.stringify(notes))}catch(e){}}
@@ -363,7 +506,7 @@ async function flush(){
 }
 function addExtras(upd,rn,rd){   /* 이 기기에 있던 예전 메모·서랍을 한 번만 공유 저장소로 옮김 */
   LOCAL0.notes.forEach(n=>{const id=cleanId(n.id);if(id&&!/^s\d$/.test(id)&&!rn[id])upd["notes/"+id]=noteBody(normNote(n,id))});
-  LOCAL0.custom.forEach(d=>{const id=cleanId(d.id);if(id&&!rd[id])upd["drawers/"+id]={name:d.name,icon:d.icon,color:d.color,t:d.t||Date.now()}});
+  LOCAL0.custom.forEach(d=>{const id=cleanId(d.id);if(id&&!rd[id])upd["drawers/"+id]={name:d.name,icon:d.icon,color:d.color,hint:d.hint||"",tags:splitTags(d.tags).join(","),track:!!d.track,t:d.t||Date.now()}});
 }
 function seedRemote(){
   const upd={seeded:true};
@@ -381,20 +524,22 @@ function migrateOnce(w){
 }
 function apply(w){
   synced=true;setSync("동기화됨 ✓");
-  const rn=w.notes||{}, rd=w.drawers||{}, rm=w.drawerMods||{};
+  const rn=w.notes||{}, rd=w.drawers||{}, rm=w[MODP]||{};
   const sig=JSON.stringify([rn,rd,rm]);
   if(sig===remoteSig)return;
   remoteSig=sig;
-  custom=Object.entries(rd).filter(([,d])=>d&&typeof d==="object").map(([id,d])=>({id,name:String(d.name||"서랍").slice(0,12),icon:String(d.icon||"★").slice(0,2),color:ALLCOLORS.includes(d.color)?d.color:COLORS[0],hint:String(d.hint||"직접 만든 서랍").slice(0,30),custom:true,t:+d.t||0})).sort((a,b)=>a.t-b.t);
+  custom=Object.entries(rd).filter(([,d])=>d&&typeof d==="object").map(([id,d])=>({id,name:String(d.name||"서랍").slice(0,12),icon:String(d.icon||"★").slice(0,2),color:ALLCOLORS.includes(d.color)?d.color:COLORS[0],hint:String(d.hint||"직접 만든 서랍").slice(0,40),tags:splitTags(d.tags),track:!!d.track,custom:true,t:+d.t||0})).sort((a,b)=>a.t-b.t);
   mods={};
   Object.entries(rm).forEach(([id,m])=>{
     if(!BASE_IDS.has(id)||!m||typeof m!=="object")return;
-    mods[id]=m.del?{del:true}:{name:String(m.name||"").slice(0,12),icon:String(m.icon||"").slice(0,2),color:m.color,hint:String(m.hint||"").slice(0,30)};
+    mods[id]=m.del?{del:true}:{name:String(m.name||"").slice(0,12),icon:String(m.icon||"").slice(0,2),color:m.color,hint:String(m.hint||"").slice(0,40),tags:typeof m.tags==="string"?m.tags:undefined,track:typeof m.track==="boolean"?m.track:undefined};
   });
   buildDrawers();
   notes=Object.entries(rn).filter(([,n])=>n&&typeof n==="object").map(([id,n])=>normNote(n,id));
+  const fix={};notes.forEach(n=>{if(rn[n.id].d==="thanks"){fix["notes/"+n.id+"/d"]=n.d;fix["notes/"+n.id+"/tags"]=n.tags}});
+  if(Object.keys(fix).length)dbPatch("",fix);   /* 예전 '감사' 서랍 메모를 한 번만 옮김 */
   notes.forEach(n=>{if(!dmap[n.d])n.d=fbId()});
-  if(view!=="all"&&!dmap[view])view="all";
+  if(view!=="done"&&!dmap[view])view=DRAWERS[0].id;
   save();saveDrawers();saveMods();render();
 }
 async function pull(){
@@ -421,83 +566,144 @@ function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clea
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const fmt=t=>new Date(t).toLocaleDateString("ko-KR",{month:"long",day:"numeric"});
 
+/* 카테고리의 태그 후보: 기본 태그 + 그 카테고리에서 써온 태그 */
+function tagsFor(did){
+  const d=dmap[did];const out=d?[...d.tags]:[];
+  notes.filter(n=>n.d===did).forEach(n=>n.tags.forEach(t=>{if(!out.includes(t))out.push(t)}));
+  return out;
+}
+function fillQTag(){
+  const sel=$("#qTag"), cur=sel.value, ts=tagsFor($("#qDrawer").value);
+  sel.innerHTML=`<option value="">태그 없음</option>`+ts.map(t=>`<option value="${esc(t)}">#${esc(t)}</option>`).join("");
+  sel.value=ts.includes(cur)?cur:(tagF&&ts.includes(tagF)?tagF:"");
+}
+function dday(due){
+  const t0=new Date();t0.setHours(0,0,0,0);
+  const k=Math.round((new Date(due+"T00:00:00")-t0)/864e5);
+  return {k,label:k>0?"D-"+k:k===0?"D-day":"D+"+(-k)};
+}
+
 /* 화면 */
+const open=()=>notes.filter(n=>!n.done);
 function renderNav(){
-  const all=`<button class="drawer" style="--c:var(--accent)" data-v="all" aria-current="${view==="all"}"><span class="name">▤ 전체</span><span class="count">${notes.length}</span></button>`;
-  $("#drawers").innerHTML=all+DRAWERS.map(d=>{
-    const n=notes.filter(x=>x.d===d.id).length;
-    return `<button class="drawer" style="--c:var(${d.color})" data-v="${d.id}" aria-current="${view===d.id}"><span class="name"><span aria-hidden="true">${esc(d.icon)}</span>${esc(d.name)}</span><span class="count">${n}</span></button>`}).join("")+`<button class="drawer add" style="--c:var(--accent)" data-add="1"><span class="name"><span aria-hidden="true">＋</span>서랍 추가</span></button>`;
+  const act=open();
+  if(!dmap[view]&&view!=="done")view=DRAWERS[0].id;
+  if(dmap[view])lastCat=view;
+  $("#doneCount").textContent=notes.length-act.length;
+  $("#doneBtn").setAttribute("aria-pressed",view==="done");
+  $("#drawers").innerHTML=DRAWERS.map(d=>{
+    const n=act.filter(x=>x.d===d.id).length;
+    return `<button class="drawer" style="--c:var(${d.color})" data-v="${d.id}" aria-current="${view===d.id}"><span class="name"><span aria-hidden="true">${esc(d.icon)}</span>${esc(d.name)}</span><span class="count">${n}</span></button>`}).join("");
   const opts=DRAWERS.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join("");
   const fcur=$("#fDrawer").value;$("#fDrawer").innerHTML=opts;if(fcur&&dmap[fcur])$("#fDrawer").value=fcur;
   const cur=$("#qDrawer").value;
   $("#qDrawer").innerHTML=opts;
-  const want=view!=="all"?view:(cur||"idea");
+  const want=dmap[view]?view:(cur||"idea");
   $("#qDrawer").value=dmap[want]?want:fbId();
+  fillQTag();
 }
 function card(n){
   const d=dmap[n.d]||dmap[fbId()]||{name:"",color:"--accent"};
-  return `<article class="note" style="--c:var(${d.color})">
-    <h3>${esc(n.title)}</h3>
-    <p>${esc(n.body)}</p>
+  return `<article class="note${n.done?" is-done":""}" style="--c:var(${d.color})" data-open="${n.id}" tabindex="0" aria-label="${esc(n.title)} 열기">
+    ${d.track||n.done?`<div class="nt"><button type="button" class="circ${n.done?" on":""}" data-a="${n.done?"undone":"done"}" data-id="${n.id}" aria-label="${n.done?"완료 취소":"완료"}">✓</button><h3>${esc(n.title)}</h3></div>`:`<h3>${esc(n.title)}</h3>`}
+    ${n.body?`<p>${esc(n.body)}</p>`:""}
     <div class="meta">
-      <div class="tags"><span class="tag">${esc(d.name)}</span>${n.tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join("")}</div>
-      <span>${fmt(n.t)}</span>
+      <div class="tags"><span class="tag">${esc(d.name)}</span>${d.track&&n.due?(()=>{const x=dday(n.due);const c=n.done?"":x.k<0?" over":x.k<=3?" soon":"";return `<span class="due${c}" title="목표 완료일">목표 ${fmt(new Date(n.due+"T00:00:00"))}${n.done?"":" · "+x.label}</span>`})():""}${n.tags.map(t=>`<button type="button" class="tag" data-tag="${esc(t)}" aria-label="#${esc(t)} 태그만 보기">#${esc(t)}</button>`).join("")}</div>
+      <span>${n.done?"완료 "+fmt(n.done):fmt(n.t)}</span>
     </div>
-    <div class="acts">
-      <button data-a="pin" data-id="${n.id}" class="${n.pin?"pin-on":""}" aria-label="${n.pin?"고정 해제":"고정"}">${n.pin?"★ 고정됨":"☆ 고정"}</button>
-      <button data-a="edit" data-id="${n.id}">수정</button>
-      <button data-a="del" data-id="${n.id}">삭제</button>
-    </div></article>`;
+</article>`;
 }
 function render(){
   renderNav();
   const d=dmap[view];
-  $("#title").textContent=d?d.name:"전체";
-  $("#sub").textContent=d?d.hint:"모든 서랍에 든 메모";
+  const isDone=view==="done";
+  $("#title").textContent=d?d.name:isDone?"완료함":"전체";
+  $("#sub").textContent=d?d.hint:isDone?"완료한 메모 · 되돌리면 원래 서랍으로 돌아가요":"모든 서랍에 든 메모";
   $("#editDrawerBtn").hidden=!d;
-  $("#delDrawerBtn").hidden=!d;
   $("#restoreBtn").hidden=!Object.keys(mods).length;
-  $("#stats").innerHTML=view==="all"?DRAWERS.map(x=>`<div class="stat" style="--c:var(${x.color})"><b>${notes.filter(n=>n.d===x.id).length}</b><span>${esc(x.name)}</span></div>`).join(""):"";
+  $("#stats").innerHTML=view==="all"?DRAWERS.map(x=>`<div class="stat" style="--c:var(${x.color})"><b>${notes.filter(n=>n.d===x.id&&!n.done).length}</b><span>${esc(x.name)}</span></div>`).join(""):"";
   const q=query.trim().toLowerCase();
-  let list=notes.filter(n=>(view==="all"||n.d===view)&&(!q||(n.title+n.body+n.tags.join(" ")).toLowerCase().includes(q)));
-  list.sort((a,b)=>b.t-a.t);
-  const pins=list.filter(n=>n.pin), rest=list.filter(n=>!n.pin);
-  $("#pinnedWrap").innerHTML=pins.length?`<h3 class="section-title">고정한 메모</h3><div class="grid">${pins.map(card).join("")}</div>`:"";
+  const base=notes.filter(n=>(isDone?n.done:!n.done&&(q||n.d===view))&&(!q||(n.title+n.body+n.tags.join(" ")).toLowerCase().includes(q)));
+  const tc={};base.forEach(n=>new Set(n.tags).forEach(t=>{tc[t]=(tc[t]||0)+1}));
+  if(tagF&&!tc[tagF])tc[tagF]=0;
+  const tags=Object.entries(tc).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],"ko"));
+  $("#tagBar").innerHTML="";
+  let list=tagF?base.filter(n=>n.tags.includes(tagF)):base;
+  if(q&&!isDone)$("#sub").textContent="모든 카테고리에서 \""+query.trim()+"\" 검색 중 · "+list.length+"개";
+  if(tagF)$("#sub").textContent="#"+tagF+" 태그 · "+list.length+"개 (메모의 #"+tagF+"를 다시 누르면 해제)";
+  list.sort(isDone?(a,b)=>b.done-a.done:(a,b)=>b.u-a.u);   /* 최신 저장본이 맨 위 */   /* 최신 저장본이 맨 위 */
+  $("#pinnedWrap").innerHTML="";
   $("#listWrap").innerHTML=list.length
-    ?(rest.length?`<h3 class="section-title">${pins.length?"나머지 메모":"최근 메모"}</h3><div class="grid">${rest.map(card).join("")}</div>`:"")
-    :`<div class="empty">${loading?"공유 서랍을 불러오는 중이에요…":q?"검색 결과가 없어요. 다른 단어로 찾아보세요.":"이 서랍은 비어 있어요. 위의 입력창에 첫 메모를 넣어보세요."}</div>`;
+    ?`<div class="grid">${list.map(card).join("")}</div>`
+    :`<div class="empty">${loading?"공유 서랍을 불러오는 중이에요…":tagF?"이 서랍에는 #"+esc(tagF)+" 태그가 붙은 메모가 없어요.":q?"검색 결과가 없어요. 다른 단어로 찾아보세요.":isDone?"아직 완료한 메모가 없어요. 메모의 ✓ 완료를 누르면 여기로 와요.":"이 카테고리는 비어 있어요. 아래 입력창에 첫 메모를 넣어보세요."}</div>`;
 }
 
 /* 편집 */
-function openDlg(id){
+function syncDlg(){
+  const did=$("#fDrawer").value, d=dmap[did], cur=splitTags($("#fTags").value);
+  const ts=tagsFor(did);cur.forEach(t=>{if(!ts.includes(t))ts.push(t)});
+  $("#fTagPick").innerHTML=ts.map(t=>`<button type="button" data-pick="${esc(t)}" aria-pressed="${cur.includes(t)}">#${esc(t)}</button>`).join("");
+  $("#fDueWrap").hidden=!(d&&d.track);
+}
+$("#fTagPick").addEventListener("click",e=>{
+  const b=e.target.closest("[data-pick]");if(!b)return;
+  let cur=splitTags($("#fTags").value);const t=b.dataset.pick;
+  cur=cur.includes(t)?cur.filter(x=>x!==t):[...cur,t];
+  $("#fTags").value=cur.join(", ");syncDlg();
+});
+$("#fTags").addEventListener("input",syncDlg);
+$("#fDrawer").addEventListener("change",()=>{   /* 카테고리 바꾸면 다른 카테고리 전용 태그는 정리 */
+  const keep=tagsFor($("#fDrawer").value);
+  if(!editId)$("#fTags").value=splitTags($("#fTags").value).filter(t=>keep.includes(t)).join(", ");
+  syncDlg();
+});
+function openDlg(id,text){
   editId=id||null;
+  $("#delNote").hidden=!id;
   const n=notes.find(x=>x.id===id);
   $("#dlgTitle").textContent=n?"메모 수정":"새 메모";
-  const wantD=n?n.d:(view!=="all"?view:"idea");
+  const wantD=n?n.d:(dmap[view]?view:lastCat);
   $("#fDrawer").value=dmap[wantD]?wantD:fbId();
-  $("#fTitle").value=n?n.title:"";
+  $("#fTitle").value=n?n.title:(text||"");
   $("#fBody").value=n?n.body:"";
-  $("#fTags").value=n?n.tags.join(", "):"";
+  $("#fTags").value=n?n.tags.join(", "):(tagF||"");
+  $("#fDue").value=n?n.due:"";
+  syncDlg();
   $("#dlg").showModal();
   $("#fTitle").focus();
 }
 $("#form").addEventListener("submit",e=>{
-  const tags=$("#fTags").value.split(",").map(s=>s.trim().replace(/^#/,"")).filter(Boolean);
-  const data={d:$("#fDrawer").value,title:$("#fTitle").value.trim(),body:$("#fBody").value,tags};
-  if(editId){const n=notes.find(n=>n.id===editId);Object.assign(n,data);dbPatch("/notes/"+n.id,noteBody(n));toast("수정했어요")}
-  else{const n={id:newId("n"),pin:false,t:Date.now(),...data};notes.push(n);dbPut("/notes/"+n.id,noteBody(n));toast("서랍에 넣었어요")}
+  const tags=splitTags($("#fTags").value), did=$("#fDrawer").value;
+  const data={d:did,title:$("#fTitle").value.trim(),body:$("#fBody").value,tags,due:dmap[did]&&dmap[did].track?$("#fDue").value:""};
+  if(editId){const n=notes.find(n=>n.id===editId);Object.assign(n,data,{u:Date.now()});dbPatch("/notes/"+n.id,noteBody(n));toast("수정했어요")}
+  else{const t=Date.now(),n={id:newId("n"),pin:false,t,u:t,...data};notes.push(n);dbPut("/notes/"+n.id,noteBody(n));toast("서랍에 넣었어요")}
   save();render();
 });
 $("#cancel").onclick=()=>$("#dlg").close();
-$("#newBtn").onclick=()=>openDlg();
+$("#qMore").onclick=()=>{const v=$("#qText").value.trim();openDlg(null,v);$("#fDrawer").value=$("#qDrawer").value;
+  const qt=$("#qTag").value;if(qt)$("#fTags").value=qt;syncDlg();$("#qText").value=""};
+$("#delNote").onclick=()=>{
+  const n=notes.find(x=>x.id===editId);if(!n||!confirm("이 메모를 삭제할까요?"))return;
+  notes=notes.filter(x=>x!==n);dbDel("/notes/"+n.id);save();$("#dlg").close();render();toast("삭제했어요");
+};
+document.addEventListener("click",e=>{
+  if(e.target.closest("button,a,input,select,textarea"))return;
+  const c=e.target.closest("[data-open]");if(c)openDlg(c.dataset.open);
+});
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||!e.target.matches||!e.target.matches("[data-open]"))return;
+  openDlg(e.target.dataset.open);
+});
 
 function quickAdd(){
   const v=$("#qText").value.trim(); if(!v)return;
-  const n={id:newId("n"),d:$("#qDrawer").value,title:v.length>30?v.slice(0,30)+"…":v,body:v.length>30?v:"",tags:[],pin:false,t:Date.now()};
+  const qt=$("#qTag").value;
+  const n={id:newId("n"),d:$("#qDrawer").value,title:v.length>30?v.slice(0,30)+"…":v,body:v.length>30?v:"",tags:qt?[qt]:[],pin:false,t:Date.now(),u:Date.now(),done:0,due:""};
   notes.push(n);dbPut("/notes/"+n.id,noteBody(n));
   $("#qText").value="";save();render();toast("서랍에 넣었어요");
 }
 $("#qAdd").onclick=quickAdd;
+$("#qDrawer").addEventListener("change",fillQTag);
 $("#qText").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.isComposing)quickAdd()});
 
 /* 이벤트 */
@@ -506,10 +712,12 @@ function openDDlg(id){
   const d=id?dmap[id]:null;
   const icons=d&&!ALLICONS.includes(d.icon)?[d.icon,...ALLICONS]:ALLICONS;
   const curIcon=d?d.icon:ICONS[0], curColor=d?d.color:COLORS[0];
-  $("#dTitle").textContent=d?"서랍 수정":"새 서랍 만들기";
+  $("#dTitle").textContent=d?"카테고리 수정":"새 카테고리 만들기";
   $("#dSubmit").textContent=d?"저장":"만들기";
   $("#dName").value=d?d.name:"";
   $("#dHint").value=d&&d.hint!=="직접 만든 서랍"?d.hint:"";
+  $("#dTags").value=d?d.tags.join(", "):"";
+  $("#dTrack").checked=d?!!d.track:false;
   $("#dIcons").innerHTML=icons.map(i=>`<label class="opt"><input type="radio" name="dIcon" value="${esc(i)}" ${i===curIcon?"checked":""} aria-label="아이콘 ${esc(i)}"><span>${esc(i)}</span></label>`).join("");
   $("#dColors").innerHTML=ALLCOLORS.map((c,k)=>`<label class="opt"><input type="radio" name="dColor" value="${c}" ${c===curColor?"checked":""} aria-label="색 ${k+1}"><span style="background:var(${c})"></span></label>`).join("");
   $("#ddlg").showModal();$("#dName").focus();
@@ -517,29 +725,30 @@ function openDDlg(id){
 $("#dform").addEventListener("submit",()=>{
   const name=$("#dName").value.trim();if(!name)return;
   const icon=$("input[name=dIcon]:checked").value, color=$("input[name=dColor]:checked").value, hint=$("#dHint").value.trim();
+  const tags=splitTags($("#dTags").value), track=$("#dTrack").checked;
   if(dEditId){
     const d=dmap[dEditId];if(!d)return;
     if(d.custom){
       const c=custom.find(x=>x.id===dEditId);if(!c)return;
-      Object.assign(c,{name,icon,color,hint:hint||"직접 만든 서랍"});
-      dbPatch("/drawers/"+c.id,{name:c.name,icon:c.icon,color:c.color,hint:c.hint});
+      Object.assign(c,{name,icon,color,hint:hint||"직접 만든 서랍",tags,track});
+      dbPatch("/drawers/"+c.id,{name:c.name,icon:c.icon,color:c.color,hint:c.hint,tags:tags.join(","),track});
       saveDrawers();
     }else{
-      mods[dEditId]={name,icon,color,hint};
-      dbPut("/drawerMods/"+dEditId,mods[dEditId]);
+      mods[dEditId]={name,icon,color,hint,tags:tags.join(","),track};
+      dbPut("/"+MODP+"/"+dEditId,mods[dEditId]);
       saveMods();
     }
     buildDrawers();render();toast("서랍을 수정했어요");
     return;
   }
   const id=newId("c");
-  const nd={id,name,icon,color,hint:hint||"직접 만든 서랍",custom:true,t:Date.now()};
-  custom.push(nd);dbPut("/drawers/"+id,{name:nd.name,icon:nd.icon,color:nd.color,hint:nd.hint,t:nd.t});
+  const nd={id,name,icon,color,hint:hint||"직접 만든 서랍",tags,track,custom:true,t:Date.now()};
+  custom.push(nd);dbPut("/drawers/"+id,{name:nd.name,icon:nd.icon,color:nd.color,hint:nd.hint,tags:tags.join(","),track,t:nd.t});
   saveDrawers();buildDrawers();view=id;render();toast("새 서랍을 만들었어요");
 });
 $("#dCancel").onclick=()=>$("#ddlg").close();
 $("#editDrawerBtn").onclick=()=>{if(dmap[view])openDDlg(view)};
-$("#delDrawerBtn").onclick=()=>{
+const _unusedDel=()=>{
   const d=dmap[view];if(!d)return;
   if(DRAWERS.length<=1){toast("서랍은 최소 하나는 있어야 해요");return}
   const rest=DRAWERS.filter(x=>x.id!==d.id);
@@ -549,22 +758,28 @@ $("#delDrawerBtn").onclick=()=>{
   const upd={};
   notes.forEach(x=>{if(x.d===d.id){x.d=to.id;upd["notes/"+x.id+"/d"]=to.id}});
   if(d.custom){upd["drawers/"+d.id]=null;custom=custom.filter(c=>c.id!==d.id)}
-  else{mods[d.id]={del:true};upd["drawerMods/"+d.id]={del:true};saveMods()}
-  dbPatch("",upd);saveDrawers();save();buildDrawers();view="all";render();toast("서랍을 삭제했어요");
+  else{mods[d.id]={del:true};upd[MODP+"/"+d.id]={del:true};saveMods()}
+  dbPatch("",upd);saveDrawers();save();buildDrawers();view=DRAWERS[0].id;render();toast("서랍을 삭제했어요");
 };
 $("#restoreBtn").onclick=()=>{
-  if(!confirm("꿈, 기록 등 기본 서랍을 처음 상태로 되돌릴까요?\n이름·아이콘 수정과 삭제가 취소돼요. (이미 옮겨진 메모는 그대로 있어요)"))return;
-  mods={};saveMods();dbDel("/drawerMods");buildDrawers();render();toast("기본 서랍을 복원했어요");
+  if(!confirm("Dream, Archive 등 기본 카테고리를 처음 상태로 되돌릴까요?\n이름·아이콘 수정과 삭제가 취소돼요. (이미 옮겨진 메모는 그대로 있어요)"))return;
+  mods={};saveMods();dbDel("/"+MODP);buildDrawers();render();toast("기본 서랍을 복원했어요");
 };
-$("#drawers").addEventListener("click",e=>{if(e.target.closest("[data-add]")){openDDlg();return}const b=e.target.closest("[data-v]");if(b){view=b.dataset.v;render()}});
+$("#drawers").addEventListener("click",e=>{if(e.target.closest("[data-add]")){openDDlg();return}const b=e.target.closest("[data-v]");if(b){setView(b.dataset.v)}});
+function setView(v){view=v;tagF="";try{localStorage.setItem("thought-drawer-view",v)}catch(e){}render()}
+$("#doneBtn").onclick=()=>setView(view==="done"?lastCat:"done");
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-a]");if(!b)return;
   const n=notes.find(x=>x.id===b.dataset.id);if(!n)return;
   if(b.dataset.a==="pin"){n.pin=!n.pin;dbPatch("/notes/"+n.id,{pin:n.pin});save();render()}
+  if(b.dataset.a==="done"){n.done=Date.now();dbPatch("/notes/"+n.id,{done:n.done});save();render();toast("완료! 완료함으로 옮겼어요 ✓")}
+  if(b.dataset.a==="undone"){n.done=0;dbPatch("/notes/"+n.id,{done:0});save();render();toast("'"+((dmap[n.d]||{}).name||"카테고리")+"'(으)로 되돌렸어요")}
   if(b.dataset.a==="edit")openDlg(n.id);
   if(b.dataset.a==="del"&&confirm("이 메모를 삭제할까요?")){notes=notes.filter(x=>x!==n);dbDel("/notes/"+n.id);save();render();toast("삭제했어요")}
 });
 $("#search").addEventListener("input",e=>{query=e.target.value;render()});
+$("#tagBar").addEventListener("click",e=>{const b=e.target.closest("[data-tagf]");if(!b)return;tagF=tagF===b.dataset.tagf?"":b.dataset.tagf;render()});
+document.addEventListener("click",e=>{const b=e.target.closest("[data-tag]");if(!b)return;tagF=tagF===b.dataset.tag?"":b.dataset.tag;render();scrollTo({top:0,behavior:"smooth"})});
 
 /* 내보내기 / 불러오기 / 테마 */
 $("#exportBtn").onclick=()=>{
@@ -581,8 +796,8 @@ $("#importFile").addEventListener("change",e=>{
       if(!Array.isArray(data)&&Array.isArray(data.drawers)){
         data.drawers.filter(d=>d&&d.id&&d.name).forEach(d=>{const id=cleanId(d.id);
           if(id&&!dmap[id]){
-            const nd={id,name:String(d.name).slice(0,12),icon:String(d.icon||"★").slice(0,2),color:ALLCOLORS.includes(d.color)?d.color:COLORS[0],hint:String(d.hint||"직접 만든 서랍").slice(0,30),custom:true,t:Date.now()};
-            custom.push(nd);buildDrawers();upd["drawers/"+id]={name:nd.name,icon:nd.icon,color:nd.color,hint:nd.hint,t:nd.t};
+            const nd={id,name:String(d.name).slice(0,12),icon:String(d.icon||"★").slice(0,2),color:ALLCOLORS.includes(d.color)?d.color:COLORS[0],hint:String(d.hint||"직접 만든 서랍").slice(0,40),tags:splitTags(d.tags),track:!!d.track,custom:true,t:Date.now()};
+            custom.push(nd);buildDrawers();upd["drawers/"+id]={name:nd.name,icon:nd.icon,color:nd.color,hint:nd.hint,tags:nd.tags.join(","),track:nd.track,t:nd.t};
           }});
         saveDrawers();
       }
@@ -597,9 +812,18 @@ $("#importFile").addEventListener("change",e=>{
     }catch(_){toast("올바른 백업 파일이 아니에요")}
   });e.target.value="";
 });
-$("#themeBtn").onclick=()=>{
+const THEMES=[["note","노트"],["white","흰 종이"],["dark","바다"]];
+function applyTheme(t){
   const r=document.documentElement;
-  r.dataset.theme=r.dataset.theme==="light"?"dark":"light";
+  if(t==="note")delete r.dataset.theme;else r.dataset.theme=t;
+  const bg=getComputedStyle(r).getPropertyValue("--bg").trim();
+  document.querySelector('meta[name="theme-color"]').content=bg;
+  $("#themeBtn").textContent="테마: "+THEMES.find(x=>x[0]===t)[1];
+}
+let theme=document.documentElement.dataset.theme||"note";applyTheme(theme);
+$("#themeBtn").onclick=()=>{
+  theme=THEMES[(THEMES.findIndex(x=>x[0]===theme)+1)%THEMES.length][0];
+  applyTheme(theme);try{localStorage.setItem("thought-drawer-theme",theme)}catch(e){}
 };
 
 load();
@@ -608,6 +832,13 @@ render();pull();
 setInterval(()=>{if(document.visibilityState==="visible")pull()},POLL_MS);
 document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")pull()});
 addEventListener("online",pull);
+/* 키보드가 올라오면 입력 중인 칸이 보이도록 화면을 맞춤 */
+document.addEventListener("focusin",e=>{
+  const el=e.target;if(!el.matches||!el.matches("input,textarea,select"))return;
+  setTimeout(()=>{try{el.scrollIntoView({block:"center",behavior:"smooth"})}catch(_){}},350);
+});
+/* 설치형 웹앱(PWA): 사이트에서만 서비스워커 등록, APK 안에서는 생략 */
+if("serviceWorker" in navigator&&!window.Capacitor&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
 addEventListener("beforeunload",e=>{if(queue.length){e.preventDefault();e.returnValue=""}});
 </script>
 </body>
