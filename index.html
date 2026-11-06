@@ -307,6 +307,12 @@ html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);fo
 .fullcal-dlg .cal-dow{font-size:14px}
 .fullcal-dlg .cal-d{font-size:19px;height:52px;padding:9px 0}
 .fullcal-dlg .cal-dots i{width:7px;height:7px}
+.day-dlg{width:min(380px,92vw)}
+.day-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 4px;border:0;border-bottom:1px solid var(--line);background:none;font-size:15px;color:var(--ink);cursor:pointer}
+.day-item:last-of-type{border-bottom:0}
+.day-item:hover,.day-item:focus-visible{background:var(--card-hi)}
+.day-item i{width:9px;height:9px;border-radius:50%;flex:none}
+.day-item.done{opacity:.5;text-decoration:line-through}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 /* ── 스마트폰 보정 (노치·상태바 안전영역, 터치, 작은 화면) ── */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
@@ -430,6 +436,11 @@ button,.note,.drawer,.tag,.cal-d{touch-action:manipulation}
 <dialog id="fullCalDlg" class="fullcal-dlg" aria-label="전체 달력 (Tasks·Life)">
   <div id="fullCalWrap"></div>
   <div class="row"><button type="button" class="ghost" id="fullCalClose">닫기</button></div>
+</dialog>
+<dialog id="dayDlg" class="day-dlg">
+  <h3 id="dayDlgTitle"></h3>
+  <div id="dayDlgList"></div>
+  <div class="row"><button type="button" class="ghost" id="dayDlgClose">닫기</button></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
 
@@ -684,26 +695,42 @@ function calHtml(month,events,idp){
       const dots=dayEvents.length?`<span class="cal-dots">${dayEvents.slice(0,4).map(ev=>`<i style="background:${ev.color}" class="${ev.done?"done":""}"></i>`).join("")}</span>`:"";
       if(!dayEvents.length)return `<div class="cal-d${wknd}">${num}${dots}</div>`;
       const titles=dayEvents.map(ev=>ev.title).join(" · ");
-      return `<button type="button" class="cal-d${wknd} has" data-open="${dayEvents[0].id}" title="${esc(titles)}" aria-label="${esc(titles)}">${num}${dots}</button>`;
+      const iso=`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
+      return `<button type="button" class="cal-d${wknd} has" data-date="${iso}" title="${esc(titles)}" aria-label="${esc(titles)}">${num}${dots}</button>`;
     }).join("")}</div>`;
   });
   html+="</div>";
   return html;
 }
 let fullCalMonth=new Date();fullCalMonth.setDate(1);fullCalMonth.setHours(0,0,0,0);
+let fullCalEvents=[];
 function renderFullCal(){
   const wrap=$("#fullCalWrap"); if(!wrap)return;
-  wrap.innerHTML=calHtml(fullCalMonth,calEventsFor(["todo","life"]),"fullCal");
+  fullCalEvents=calEventsFor(["todo","life"]);
+  wrap.innerHTML=calHtml(fullCalMonth,fullCalEvents,"fullCal");
   $("#fullCalPrev").onclick=()=>{fullCalMonth.setMonth(fullCalMonth.getMonth()-1);renderFullCal()};
   $("#fullCalNext").onclick=()=>{fullCalMonth.setMonth(fullCalMonth.getMonth()+1);renderFullCal()};
+}
+function openDayList(iso){
+  const d=new Date(iso+"T00:00:00");
+  const dayEvents=fullCalEvents.filter(ev=>ev.s<=d&&d<=ev.e);
+  if(!dayEvents.length)return;
+  $("#dayDlgTitle").textContent=d.toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"});
+  $("#dayDlgList").innerHTML=dayEvents.map(ev=>
+    `<button type="button" class="day-item${ev.done?" done":""}" data-open="${ev.id}">
+      <i style="background:${ev.color}"></i><span>${esc(ev.title)}</span>
+    </button>`).join("");
+  $("#dayDlg").showModal();
 }
 $("#fullCalBtn").onclick=()=>{renderFullCal();$("#fullCalDlg").showModal()};
 $("#fullCalClose").onclick=()=>$("#fullCalDlg").close();
 $("#fullCalWrap").addEventListener("click",e=>{   /* 날짜 칸이 버튼이라 전역 델리게이트에서 제외되므로 따로 처리 */
-  const b=e.target.closest(".cal-d.has");if(b){$("#fullCalDlg").close();openDlg(b.dataset.open)}
+  const b=e.target.closest(".cal-d.has");if(b)openDayList(b.dataset.date);
 });
-$("#fullCalWrap").addEventListener("click",e=>{
-  const b=e.target.closest(".cal-bar");if(b){$("#fullCalDlg").close();openDlg(b.dataset.open)}
+$("#dayDlgClose").onclick=()=>$("#dayDlg").close();
+$("#dayDlgList").addEventListener("click",e=>{
+  const b=e.target.closest(".day-item");
+  if(b){$("#dayDlg").close();$("#fullCalDlg").close();openDlg(b.dataset.open)}
 });
 function render(){
   renderNav();
