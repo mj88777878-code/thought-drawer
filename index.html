@@ -618,7 +618,7 @@ function card(n){
     ${n.body?`<p>${esc(n.body)}</p>`:""}
     <div class="meta">
       <div class="tags"><span class="tag">${esc(d.name)}</span>${d.track&&n.due?(()=>{const x=dday(n.due);const c=n.done?"":x.k<0?" over":x.k<=3?" soon":"";const range=(n.start?ymd(n.start)+" ~ ":"")+ymd(n.due);return `<span class="due${c}" title="${n.start?"기간":"목표 완료일"}">${range}${n.done?"":" · "+x.label}</span>`})():""}${n.tags.map(t=>`<button type="button" class="tag" data-tag="${esc(t)}" aria-label="#${esc(t)} 태그만 보기">#${esc(t)}</button>`).join("")}</div>
-      <span>${n.done?"완료 "+fmt(n.done):fmt(n.t)}</span>
+      <span>${n.done?"완료 "+fmt(n.done):(n.u-n.t>60000?"수정 "+fmt(n.u):fmt(n.t))}</span>
     </div>
 </article>`;
 }
@@ -701,7 +701,7 @@ function render(){
   let list=tagF?base.filter(n=>n.tags.includes(tagF)):base;
   if(q&&!isDone)$("#sub").textContent="모든 카테고리에서 \""+query.trim()+"\" 검색 중 · "+list.length+"개";
   if(tagF)$("#sub").textContent="#"+tagF+" 태그 · "+list.length+"개 (메모의 #"+tagF+"를 다시 누르면 해제)";
-  list.sort(isDone?(a,b)=>b.done-a.done:(a,b)=>b.u-a.u);   /* 최신 저장본이 맨 위 */   /* 최신 저장본이 맨 위 */
+  list.sort(isDone?(a,b)=>b.done-a.done:(a,b)=>(b.u-a.u)||(b.t-a.t));   /* 최근 수정한 메모가 맨 위 */
   $("#pinnedWrap").innerHTML="";
   $("#listWrap").innerHTML=list.length
     ?`<div class="grid">${list.map(card).join("")}</div>`
@@ -863,7 +863,7 @@ document.addEventListener("click",e=>{
   const n=notes.find(x=>x.id===b.dataset.id);if(!n)return;
   if(b.dataset.a==="pin"){n.pin=!n.pin;dbPatch("/notes/"+n.id,{pin:n.pin});save();render()}
   if(b.dataset.a==="done"){n.done=Date.now();dbPatch("/notes/"+n.id,{done:n.done});save();render();toast("완료! 완료함으로 옮겼어요 ✓")}
-  if(b.dataset.a==="undone"){n.done=0;dbPatch("/notes/"+n.id,{done:0});save();render();toast("'"+((dmap[n.d]||{}).name||"카테고리")+"'(으)로 되돌렸어요")}
+  if(b.dataset.a==="undone"){n.done=0;n.u=Date.now();dbPatch("/notes/"+n.id,{done:0,u:n.u});save();render();toast("'"+((dmap[n.d]||{}).name||"카테고리")+"'(으)로 되돌렸어요")}
   if(b.dataset.a==="edit")openDlg(n.id);
   if(b.dataset.a==="del"&&confirm("이 메모를 삭제할까요?")){notes=notes.filter(x=>x!==n);dbDel("/notes/"+n.id);save();render();toast("삭제했어요")}
 });
