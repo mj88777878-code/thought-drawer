@@ -307,13 +307,29 @@ html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);fo
 .fullcal-dlg .cal-dow{font-size:14px}
 .fullcal-dlg .cal-d{font-size:19px;height:52px;padding:9px 0}
 .fullcal-dlg .cal-dots i{width:7px;height:7px}
-.day-dlg{width:min(380px,92vw)}
-.day-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 4px;border:0;border-bottom:1px solid var(--line);background:none;font-size:15px;color:var(--ink);cursor:pointer}
-.day-item:last-of-type{border-bottom:0}
-.day-item:hover,.day-item:focus-visible{background:var(--card-hi)}
-.day-item i{width:9px;height:9px;border-radius:50%;flex:none}
-.day-item.done{opacity:.5;text-decoration:line-through}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ── 스마트폰 보정 (노치·상태바 안전영역, 터치, 작은 화면) ── */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent}
+button,.note,.drawer,.tag,.cal-d{touch-action:manipulation}
+@media (max-width:760px){
+  .window{padding-top:env(safe-area-inset-top)}
+  .titlebar{padding-right:max(14px,env(safe-area-inset-right))}
+  html:not([data-theme="dark"]) main{padding-right:max(14px,env(safe-area-inset-right))}
+  dialog{width:94vw;padding:16px}
+  .fullcal-dlg{padding:14px}
+  .cal-head b{font-size:20px;min-width:100px}
+  .fullcal-dlg .cal-d{font-size:17px;height:46px;padding:7px 0}
+}
+@media (max-width:360px){
+  .drawers .drawer .name{font-size:14px;gap:3px}
+  html:not([data-theme="dark"]) .drawers .drawer .name{font-size:14px}
+  html:not([data-theme="dark"]) .brand h1{font-size:28px}
+  html:not([data-theme="dark"]) .top h2{font-size:28px}
+}
+/* 메모 창: 삭제·닫기·저장 버튼을 맨 위에 고정 */
+#dlg .rowtop{position:sticky;top:-22px;z-index:2;margin:-22px -22px 14px;padding:12px 22px;background:var(--glass);border-bottom:1px solid var(--line);align-items:center}
+@media (max-width:760px){#dlg .rowtop{top:-16px;margin:-16px -16px 12px;padding:10px 16px}}
 </style>
 </head>
 <body>
@@ -370,6 +386,11 @@ html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);fo
 
 <dialog id="dlg">
   <form method="dialog" id="form">
+    <div class="row rowtop">
+      <button type="button" class="ghost" id="delNote" hidden style="margin-right:auto;color:var(--c-todo)">삭제</button>
+      <button type="button" class="ghost" id="cancel">닫기</button>
+      <button type="submit" class="btn">저장</button>
+    </div>
     <h3 id="dlgTitle">새 메모</h3>
     <label class="f">카테고리<select id="fDrawer"></select></label>
     <label class="f">제목<input id="fTitle" maxlength="80" required></label>
@@ -388,11 +409,6 @@ html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);fo
         <span aria-hidden="true">~</span>
         <input type="date" id="fDue" aria-label="완료일(목표)" style="flex:1;min-width:0">
       </div>
-    </div>
-    <div class="row">
-      <button type="button" class="ghost" id="delNote" hidden style="margin-right:auto;color:var(--c-todo)">삭제</button>
-      <button type="button" class="ghost" id="cancel">닫기</button>
-      <button type="submit" class="btn">저장</button>
     </div>
   </form>
 </dialog>
@@ -414,11 +430,6 @@ html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);fo
 <dialog id="fullCalDlg" class="fullcal-dlg" aria-label="전체 달력 (Tasks·Life)">
   <div id="fullCalWrap"></div>
   <div class="row"><button type="button" class="ghost" id="fullCalClose">닫기</button></div>
-</dialog>
-<dialog id="dayDlg" class="day-dlg">
-  <h3 id="dayDlgTitle"></h3>
-  <div id="dayDlgList"></div>
-  <div class="row"><button type="button" class="ghost" id="dayDlgClose">닫기</button></div>
 </dialog>
 <div class="toast" id="toast" role="status"></div>
 
@@ -629,7 +640,7 @@ function card(n){
     ${n.body?`<p>${esc(n.body)}</p>`:""}
     <div class="meta">
       <div class="tags"><span class="tag">${esc(d.name)}</span>${d.track&&n.due?(()=>{const x=dday(n.due);const c=n.done?"":x.k<0?" over":x.k<=3?" soon":"";const range=(n.start?ymd(n.start)+" ~ ":"")+ymd(n.due);return `<span class="due${c}" title="${n.start?"기간":"목표 완료일"}">${range}${n.done?"":" · "+x.label}</span>`})():""}${n.tags.map(t=>`<button type="button" class="tag" data-tag="${esc(t)}" aria-label="#${esc(t)} 태그만 보기">#${esc(t)}</button>`).join("")}</div>
-      <span>${n.done?"완료 "+fmt(n.done):fmt(n.t)}</span>
+      <span>${n.done?"완료 "+fmt(n.done):(n.u-n.t>60000?"수정 "+fmt(n.u):fmt(n.t))}</span>
     </div>
 </article>`;
 }
@@ -673,42 +684,23 @@ function calHtml(month,events,idp){
       const dots=dayEvents.length?`<span class="cal-dots">${dayEvents.slice(0,4).map(ev=>`<i style="background:${ev.color}" class="${ev.done?"done":""}"></i>`).join("")}</span>`:"";
       if(!dayEvents.length)return `<div class="cal-d${wknd}">${num}${dots}</div>`;
       const titles=dayEvents.map(ev=>ev.title).join(" · ");
-      const iso=`${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
-      return `<button type="button" class="cal-d${wknd} has" data-date="${iso}" title="${esc(titles)}" aria-label="${esc(titles)}">${num}${dots}</button>`;
+      return `<button type="button" class="cal-d${wknd} has" data-open="${dayEvents[0].id}" title="${esc(titles)}" aria-label="${esc(titles)}">${num}${dots}</button>`;
     }).join("")}</div>`;
   });
   html+="</div>";
   return html;
 }
 let fullCalMonth=new Date();fullCalMonth.setDate(1);fullCalMonth.setHours(0,0,0,0);
-let fullCalEvents=[];
 function renderFullCal(){
   const wrap=$("#fullCalWrap"); if(!wrap)return;
-  fullCalEvents=calEventsFor(["todo","life"]);
-  wrap.innerHTML=calHtml(fullCalMonth,fullCalEvents,"fullCal");
+  wrap.innerHTML=calHtml(fullCalMonth,calEventsFor(["todo","life"]),"fullCal");
   $("#fullCalPrev").onclick=()=>{fullCalMonth.setMonth(fullCalMonth.getMonth()-1);renderFullCal()};
   $("#fullCalNext").onclick=()=>{fullCalMonth.setMonth(fullCalMonth.getMonth()+1);renderFullCal()};
-}
-function openDayList(iso){
-  const d=new Date(iso+"T00:00:00");
-  const dayEvents=fullCalEvents.filter(ev=>ev.s<=d&&d<=ev.e);
-  if(!dayEvents.length)return;
-  $("#dayDlgTitle").textContent=d.toLocaleDateString("ko-KR",{month:"long",day:"numeric",weekday:"short"});
-  $("#dayDlgList").innerHTML=dayEvents.map(ev=>
-    `<button type="button" class="day-item${ev.done?" done":""}" data-open="${ev.id}">
-      <i style="background:${ev.color}"></i><span>${esc(ev.title)}</span>
-    </button>`).join("");
-  $("#dayDlg").showModal();
 }
 $("#fullCalBtn").onclick=()=>{renderFullCal();$("#fullCalDlg").showModal()};
 $("#fullCalClose").onclick=()=>$("#fullCalDlg").close();
 $("#fullCalWrap").addEventListener("click",e=>{   /* 날짜 칸이 버튼이라 전역 델리게이트에서 제외되므로 따로 처리 */
-  const b=e.target.closest(".cal-d.has");if(b)openDayList(b.dataset.date);
-});
-$("#dayDlgClose").onclick=()=>$("#dayDlg").close();
-$("#dayDlgList").addEventListener("click",e=>{
-  const b=e.target.closest(".day-item");
-  if(b){$("#dayDlg").close();$("#fullCalDlg").close();openDlg(b.dataset.open)}
+  const b=e.target.closest(".cal-d.has");if(b){$("#fullCalDlg").close();openDlg(b.dataset.open)}
 });
 $("#fullCalWrap").addEventListener("click",e=>{
   const b=e.target.closest(".cal-bar");if(b){$("#fullCalDlg").close();openDlg(b.dataset.open)}
@@ -731,7 +723,7 @@ function render(){
   let list=tagF?base.filter(n=>n.tags.includes(tagF)):base;
   if(q&&!isDone)$("#sub").textContent="모든 카테고리에서 \""+query.trim()+"\" 검색 중 · "+list.length+"개";
   if(tagF)$("#sub").textContent="#"+tagF+" 태그 · "+list.length+"개 (메모의 #"+tagF+"를 다시 누르면 해제)";
-  list.sort(isDone?(a,b)=>b.done-a.done:(a,b)=>b.u-a.u);   /* 최신 저장본이 맨 위 */   /* 최신 저장본이 맨 위 */
+  list.sort(isDone?(a,b)=>b.done-a.done:(a,b)=>(b.u-a.u)||(b.t-a.t));   /* 최근 수정한 메모가 맨 위 */
   $("#pinnedWrap").innerHTML="";
   $("#listWrap").innerHTML=list.length
     ?`<div class="grid">${list.map(card).join("")}</div>`
@@ -893,7 +885,7 @@ document.addEventListener("click",e=>{
   const n=notes.find(x=>x.id===b.dataset.id);if(!n)return;
   if(b.dataset.a==="pin"){n.pin=!n.pin;dbPatch("/notes/"+n.id,{pin:n.pin});save();render()}
   if(b.dataset.a==="done"){n.done=Date.now();dbPatch("/notes/"+n.id,{done:n.done});save();render();toast("완료! 완료함으로 옮겼어요 ✓")}
-  if(b.dataset.a==="undone"){n.done=0;dbPatch("/notes/"+n.id,{done:0});save();render();toast("'"+((dmap[n.d]||{}).name||"카테고리")+"'(으)로 되돌렸어요")}
+  if(b.dataset.a==="undone"){n.done=0;n.u=Date.now();dbPatch("/notes/"+n.id,{done:0,u:n.u});save();render();toast("'"+((dmap[n.d]||{}).name||"카테고리")+"'(으)로 되돌렸어요")}
   if(b.dataset.a==="edit")openDlg(n.id);
   if(b.dataset.a==="del"&&confirm("이 메모를 삭제할까요?")){notes=notes.filter(x=>x!==n);dbDel("/notes/"+n.id);save();render();toast("삭제했어요")}
 });
