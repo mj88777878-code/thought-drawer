@@ -308,6 +308,25 @@ html:not([data-theme="dark"]) .drawers .drawer .name{font-family:var(--serif);fo
 .fullcal-dlg .cal-d{font-size:19px;height:52px;padding:9px 0}
 .fullcal-dlg .cal-dots i{width:7px;height:7px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ── 스마트폰 보정 (노치·상태바 안전영역, 터치, 작은 화면) ── */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-tap-highlight-color:transparent}
+button,.note,.drawer,.tag,.cal-d{touch-action:manipulation}
+@media (max-width:760px){
+  .window{padding-top:env(safe-area-inset-top)}
+  .titlebar{padding-right:max(14px,env(safe-area-inset-right))}
+  html:not([data-theme="dark"]) main{padding-right:max(14px,env(safe-area-inset-right))}
+  dialog{width:94vw;padding:16px}
+  .fullcal-dlg{padding:14px}
+  .cal-head b{font-size:20px;min-width:100px}
+  .fullcal-dlg .cal-d{font-size:17px;height:46px;padding:7px 0}
+}
+@media (max-width:360px){
+  .drawers .drawer .name{font-size:14px;gap:3px}
+  html:not([data-theme="dark"]) .drawers .drawer .name{font-size:14px}
+  html:not([data-theme="dark"]) .brand h1{font-size:28px}
+  html:not([data-theme="dark"]) .top h2{font-size:28px}
+}
 </style>
 </head>
 <body>
